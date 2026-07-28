@@ -17,9 +17,9 @@
 // and use them again to turn those numbers back into words in the table.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
-import { assignments, students, submissions } from '../api'
+import { useEffect, useState } from "react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { assignments, students, submissions } from "../api";
 import {
   Alert,
   Button,
@@ -30,7 +30,7 @@ import {
   Spinner,
   Table,
   Textarea,
-} from '../components/ui'
+} from "../components/ui";
 
 // The shape of one empty form. Keeping it here means "reset the form" is
 // just setForm(EMPTY_FORM).
@@ -38,32 +38,32 @@ import {
 // submitted_at is NOT here on purpose: the database fills it in by itself
 // (auto_now_add), so we must never send it.
 const EMPTY_FORM = {
-  assignment: '',
-  student: '',
-  content: '',
-}
+  assignment: "",
+  student: "",
+  content: "",
+};
 
 export default function SubmissionsPage() {
   // ---- 1. state --------------------------------------------------------
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // The two parent lists. They are only used to fill the dropdowns and to
   // look up names for the table, so they get their own state.
-  const [assignmentRows, setAssignmentRows] = useState([])
-  const [studentRows, setStudentRows] = useState([])
+  const [assignmentRows, setAssignmentRows] = useState([]);
+  const [studentRows, setStudentRows] = useState([]);
 
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editingId, setEditingId] = useState(null) // null means "creating"
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null); // null means "creating"
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ---- 2. read the list ------------------------------------------------
   async function load() {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
     try {
       // Three lists, asked for at the same time instead of one after another,
       // so the page appears faster. No pagination on this backend, so each
@@ -72,31 +72,31 @@ export default function SubmissionsPage() {
         submissions.list(),
         assignments.list(),
         students.list(),
-      ])
-      setRows(submissionData)
-      setAssignmentRows(assignmentData)
-      setStudentRows(studentData)
+      ]);
+      setRows(submissionData);
+      setAssignmentRows(assignmentData);
+      setStudentRows(studentData);
     } catch (err) {
-      setError(err.text || 'Could not load submissions')
+      setError(err.text || "Could not load submissions");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   // ---- 3. run load() once when the page opens --------------------------
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
   function update(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }))
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function startCreate() {
-    setForm(EMPTY_FORM)
-    setEditingId(null)
-    setFieldErrors({})
-    setShowForm(true)
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function startEdit(row) {
@@ -104,62 +104,62 @@ export default function SubmissionsPage() {
       // A <select> compares its value as a string, so the id has to become a
       // string here or the dropdown would open on "Select..." instead of on
       // the row we are editing.
-      assignment: row.assignment ? String(row.assignment) : '',
-      student: row.student ? String(row.student) : '',
-      content: row.content ?? '',
-    })
-    setEditingId(row.id)
-    setFieldErrors({})
-    setShowForm(true)
+      assignment: row.assignment ? String(row.assignment) : "",
+      student: row.student ? String(row.student) : "",
+      content: row.content ?? "",
+    });
+    setEditingId(row.id);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function cancelForm() {
-    setShowForm(false)
-    setEditingId(null)
-    setFieldErrors({})
+    setShowForm(false);
+    setEditingId(null);
+    setFieldErrors({});
   }
 
   // ---- 4. create or update ---------------------------------------------
   async function handleSubmit(event) {
-    event.preventDefault()
-    setError('')
-    setFieldErrors({})
-    setSaving(true)
+    event.preventDefault();
+    setError("");
+    setFieldErrors({});
+    setSaving(true);
 
     // A <select> always hands us a string ("4"), but Django wants the number 4.
     // The empty string means "nothing chosen", so send null and let the
     // backend answer with its own "this field is required" message.
     const payload = {
-      assignment: form.assignment === '' ? null : Number(form.assignment),
-      student: form.student === '' ? null : Number(form.student),
+      assignment: form.assignment === "" ? null : Number(form.assignment),
+      student: form.student === "" ? null : Number(form.student),
       content: form.content,
-    }
+    };
 
     try {
       if (editingId) {
-        await submissions.update(editingId, payload)
+        await submissions.update(editingId, payload);
       } else {
-        await submissions.create(payload)
+        await submissions.create(payload);
       }
-      cancelForm()
-      await load() // refresh the table so it shows the change
+      cancelForm();
+      await load(); // refresh the table so it shows the change
     } catch (err) {
-      setError(err.text || 'Could not save')
-      setFieldErrors(err.fieldErrors || {})
+      setError(err.text || "Could not save");
+      setFieldErrors(err.fieldErrors || {});
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   // ---- 5. delete --------------------------------------------------------
   async function handleDelete(row) {
-    if (!window.confirm('Delete this submission?')) return
-    setError('')
+    if (!window.confirm("Delete this submission?")) return;
+    setError("");
     try {
-      await submissions.remove(row.id)
-      await load()
+      await submissions.remove(row.id);
+      await load();
     } catch (err) {
-      setError(err.text || 'Could not delete')
+      setError(err.text || "Could not delete");
     }
   }
 
@@ -169,44 +169,44 @@ export default function SubmissionsPage() {
   // matching parent row ourselves. If it is missing (deleted, or still
   // loading) we fall back to showing the raw id.
   const assignmentTitle = (id) =>
-    assignmentRows.find((a) => a.id === id)?.title ?? `#${id}`
+    assignmentRows.find((a) => a.id === id)?.title ?? `#${id}`;
 
   const studentName = (id) =>
-    studentRows.find((s) => s.id === id)?.name ?? `Student #${id}`
+    studentRows.find((s) => s.id === id)?.name ?? `Student #${id}`;
 
   const columns = [
-    { key: 'id', label: 'ID' },
+    { key: "id", label: "ID" },
     {
-      key: 'assignment',
-      label: 'Assignment',
+      key: "assignment",
+      label: "Assignment",
       render: (row) => assignmentTitle(row.assignment),
     },
     {
-      key: 'student',
-      label: 'Student',
+      key: "student",
+      label: "Student",
       render: (row) => studentName(row.student),
     },
     {
-      key: 'content',
-      label: 'Content',
+      key: "content",
+      label: "Content",
       // Submitted work can be long, so show only the beginning of it.
       render: (row) => {
-        const text = row.content ?? ''
-        return text.length > 60 ? `${text.slice(0, 60)}...` : text || '—'
+        const text = row.content ?? "";
+        return text.length > 60 ? `${text.slice(0, 60)}...` : text || "—";
       },
     },
     {
-      key: 'submitted_at',
-      label: 'Submitted',
+      key: "submitted_at",
+      label: "Submitted",
       // The server sets this timestamp when the row is created, so it is
       // read-only here. It arrives as an ISO string; toLocaleString() turns it
       // into something a person can read.
       render: (row) =>
-        row.submitted_at ? new Date(row.submitted_at).toLocaleString() : '—',
+        row.submitted_at ? new Date(row.submitted_at).toLocaleString() : "—",
     },
     {
-      key: 'actions',
-      label: '',
+      key: "actions",
+      label: "",
       render: (row) => (
         <div className="flex gap-1">
           <Button variant="ghost" onClick={() => startEdit(row)} title="Edit">
@@ -223,20 +223,22 @@ export default function SubmissionsPage() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div>
       <PageHeader title="Submissions" subtitle="Work handed in by students." />
 
-      <Alert kind="error" onClose={() => setError('')}>
+      <Alert kind="error" onClose={() => setError("")}>
         {error}
       </Alert>
 
       {showForm && (
         <div className="mb-6">
           <Card
-            title={editingId ? `Edit submission #${editingId}` : 'New submission'}
+            title={
+              editingId ? `Edit submission #${editingId}` : "New submission"
+            }
             action={
               <Button variant="ghost" onClick={cancelForm}>
                 <X size={14} />
@@ -247,10 +249,13 @@ export default function SubmissionsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {/* The dropdown shows the assignment title, but the value it
                     stores is the id, because that is what Django wants. */}
-                <Field label="Assignment (required)" error={fieldErrors.assignment}>
+                <Field
+                  label="Assignment (required)"
+                  error={fieldErrors.assignment}
+                >
                   <Select
                     value={form.assignment}
-                    onChange={(e) => update('assignment', e.target.value)}
+                    onChange={(e) => update("assignment", e.target.value)}
                     options={assignmentRows.map((a) => ({
                       value: a.id,
                       label: a.title,
@@ -263,7 +268,7 @@ export default function SubmissionsPage() {
                 <Field label="Student (required)" error={fieldErrors.student}>
                   <Select
                     value={form.student}
-                    onChange={(e) => update('student', e.target.value)}
+                    onChange={(e) => update("student", e.target.value)}
                     options={studentRows.map((s) => ({
                       value: s.id,
                       label: s.name || `Student #${s.id}`,
@@ -278,7 +283,7 @@ export default function SubmissionsPage() {
                 <Textarea
                   rows={5}
                   value={form.content}
-                  onChange={(e) => update('content', e.target.value)}
+                  onChange={(e) => update("content", e.target.value)}
                   required
                 />
               </Field>
@@ -289,10 +294,10 @@ export default function SubmissionsPage() {
               <div className="flex gap-2">
                 <Button type="submit" disabled={saving}>
                   {saving
-                    ? 'Saving...'
+                    ? "Saving..."
                     : editingId
-                      ? 'Save changes'
-                      : 'Create submission'}
+                      ? "Save changes"
+                      : "Create submission"}
                 </Button>
                 <Button type="button" variant="secondary" onClick={cancelForm}>
                   Cancel
@@ -304,7 +309,7 @@ export default function SubmissionsPage() {
       )}
 
       <Card
-        title={`${rows.length} submission${rows.length === 1 ? '' : 's'}`}
+        title={`${rows.length} submission${rows.length === 1 ? "" : "s"}`}
         action={
           !showForm && (
             <Button onClick={startCreate}>
@@ -321,5 +326,5 @@ export default function SubmissionsPage() {
         )}
       </Card>
     </div>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 // The frame around every logged-in page: sidebar on the left, content on the right.
 
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   BookOpen,
   ClipboardList,
@@ -12,28 +12,28 @@ import {
   Trophy,
   UserRound,
   Users,
-} from 'lucide-react'
-import { useAuth } from '../AuthContext'
+} from "lucide-react";
+import { useAuth } from "../AuthContext";
 
 const NAV = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/teachers', label: 'Teachers', icon: Users },
-  { to: '/students', label: 'Students', icon: GraduationCap },
-  { to: '/courses', label: 'Courses', icon: BookOpen },
-  { to: '/enrollments', label: 'Enrollments', icon: ClipboardList },
-  { to: '/lessons', label: 'Lessons', icon: FileText },
-  { to: '/assignments', label: 'Assignments', icon: ClipboardList },
-  { to: '/submissions', label: 'Submissions', icon: Send },
-  { to: '/results', label: 'Results', icon: Trophy },
-]
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/teachers", label: "Teachers", icon: Users },
+  { to: "/students", label: "Students", icon: GraduationCap },
+  { to: "/courses", label: "Courses", icon: BookOpen },
+  { to: "/enrollments", label: "Enrollments", icon: ClipboardList },
+  { to: "/lessons", label: "Lessons", icon: FileText },
+  { to: "/assignments", label: "Assignments", icon: ClipboardList },
+  { to: "/submissions", label: "Submissions", icon: Send },
+  { to: "/results", label: "Results", icon: Trophy },
+];
 
 export default function Layout() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   function handleLogout() {
-    logout()
-    navigate('/login')
+    logout();
+    navigate("/login");
   }
 
   return (
@@ -53,8 +53,8 @@ export default function Layout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-md px-3 py-2 text-sm transition ${
                   isActive
-                    ? 'bg-indigo-50 font-medium text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-100'
+                    ? "bg-indigo-50 font-medium text-indigo-700"
+                    : "text-slate-600 hover:bg-slate-100"
                 }`
               }
             >
@@ -83,5 +83,5 @@ export default function Layout() {
         <Outlet />
       </main>
     </div>
-  )
+  );
 }

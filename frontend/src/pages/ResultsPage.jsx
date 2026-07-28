@@ -14,9 +14,9 @@
 //   - a submission can only be graded ONCE (see handleSubmit).
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
-import { results, submissions } from '../api'
+import { useEffect, useState } from "react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { results, submissions } from "../api";
 import {
   Alert,
   Button,
@@ -28,38 +28,38 @@ import {
   Spinner,
   Table,
   Textarea,
-} from '../components/ui'
+} from "../components/ui";
 
 // The shape of one empty form. Keeping it here means "reset the form" is
 // just setForm(EMPTY_FORM).
 // Everything starts as a string because that is what an <input> and a
 // <select> give us. We convert to numbers right before sending.
 const EMPTY_FORM = {
-  submission: '',
-  score: '',
-  feedback: '',
-}
+  submission: "",
+  score: "",
+  feedback: "",
+};
 
 export default function ResultsPage() {
   // ---- 1. state --------------------------------------------------------
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // The parent list for the `submission` dropdown. It lives in its own
   // state array because it is a different resource from `rows`.
-  const [submissionRows, setSubmissionRows] = useState([])
+  const [submissionRows, setSubmissionRows] = useState([]);
 
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editingId, setEditingId] = useState(null) // null means "creating"
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null); // null means "creating"
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ---- 2. read the list ------------------------------------------------
   async function load() {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
     try {
       // Two requests, but Promise.all fires them at the same time instead of
       // one after the other, so the page appears faster.
@@ -67,57 +67,58 @@ export default function ResultsPage() {
       const [resultData, submissionData] = await Promise.all([
         results.list(),
         submissions.list(),
-      ])
-      setRows(resultData)
-      setSubmissionRows(submissionData)
+      ]);
+      setRows(resultData);
+      setSubmissionRows(submissionData);
     } catch (err) {
-      setError(err.text || 'Could not load results')
+      setError(err.text || "Could not load results");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   // ---- 3. run load() once when the page opens --------------------------
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
   function update(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }))
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function startCreate() {
-    setForm(EMPTY_FORM)
-    setEditingId(null)
-    setFieldErrors({})
-    setShowForm(true)
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function startEdit(row) {
     setForm({
       // A <select> compares its value as a string, so turn the number the
       // API gave us back into text. Same for the number input.
-      submission: row.submission ? String(row.submission) : '',
-      score: row.score === null || row.score === undefined ? '' : String(row.score),
-      feedback: row.feedback ?? '',
-    })
-    setEditingId(row.id)
-    setFieldErrors({})
-    setShowForm(true)
+      submission: row.submission ? String(row.submission) : "",
+      score:
+        row.score === null || row.score === undefined ? "" : String(row.score),
+      feedback: row.feedback ?? "",
+    });
+    setEditingId(row.id);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function cancelForm() {
-    setShowForm(false)
-    setEditingId(null)
-    setFieldErrors({})
+    setShowForm(false);
+    setEditingId(null);
+    setFieldErrors({});
   }
 
   // ---- 4. create or update ---------------------------------------------
   async function handleSubmit(event) {
-    event.preventDefault()
-    setError('')
-    setFieldErrors({})
-    setSaving(true)
+    event.preventDefault();
+    setError("");
+    setFieldErrors({});
+    setSaving(true);
     try {
       // Django wants numbers here, but the form holds strings. Convert now,
       // in one place, so the rest of the page can stay simple.
@@ -128,18 +129,18 @@ export default function ResultsPage() {
       // nothing was filled in we send null and let Django answer with its own
       // "this field is required" message.
       const payload = {
-        submission: form.submission === '' ? null : Number(form.submission),
-        score: form.score === '' ? null : Number(form.score),
+        submission: form.submission === "" ? null : Number(form.submission),
+        score: form.score === "" ? null : Number(form.score),
         feedback: form.feedback,
-      }
+      };
 
       if (editingId) {
-        await results.update(editingId, payload)
+        await results.update(editingId, payload);
       } else {
-        await results.create(payload)
+        await results.create(payload);
       }
-      cancelForm()
-      await load() // refresh the table so it shows the change
+      cancelForm();
+      await load(); // refresh the table so it shows the change
     } catch (err) {
       // Results.submission is a OneToOneField, so a submission can be graded
       // only once. Grading the same one twice returns a 400 whose wording
@@ -150,65 +151,67 @@ export default function ResultsPage() {
       // the same field, so matching on the word alone would tell the user the
       // work was already graded when it was not. Rule those messages out
       // first.
-      const raw = (err.text || '').toLowerCase()
+      const raw = (err.text || "").toLowerCase();
       const looksLikeMissingValue =
-        raw.includes('required') ||
-        raw.includes('may not be null') ||
-        raw.includes('does not exist') ||
-        raw.includes('valid number')
+        raw.includes("required") ||
+        raw.includes("may not be null") ||
+        raw.includes("does not exist") ||
+        raw.includes("valid number");
       const isDuplicate =
         err.status === 400 &&
         !looksLikeMissingValue &&
-        (raw.includes('submission') ||
-          raw.includes('unique') ||
-          raw.includes('already exists'))
+        (raw.includes("submission") ||
+          raw.includes("unique") ||
+          raw.includes("already exists"));
 
       if (isDuplicate) {
-        setError('This submission has already been graded. Edit the existing result instead.')
+        setError(
+          "This submission has already been graded. Edit the existing result instead.",
+        );
       } else {
-        setError(err.text || 'Could not save')
+        setError(err.text || "Could not save");
       }
-      setFieldErrors(err.fieldErrors || {})
+      setFieldErrors(err.fieldErrors || {});
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   // ---- 5. delete --------------------------------------------------------
   async function handleDelete(row) {
-    if (!window.confirm('Delete this result?')) return
-    setError('')
+    if (!window.confirm("Delete this result?")) return;
+    setError("");
     try {
-      await results.remove(row.id)
-      await load()
+      await results.remove(row.id);
+      await load();
     } catch (err) {
-      setError(err.text || 'Could not delete')
+      setError(err.text || "Could not delete");
     }
   }
 
   // ---- 6. the screen ----------------------------------------------------
   // Feedback can be long, so the table shows only the beginning of it.
   const shortFeedback = (text) => {
-    if (!text) return '—'
-    return text.length > 60 ? `${text.slice(0, 60)}...` : text
-  }
+    if (!text) return "—";
+    return text.length > 60 ? `${text.slice(0, 60)}...` : text;
+  };
 
   const columns = [
-    { key: 'id', label: 'ID' },
+    { key: "id", label: "ID" },
     {
-      key: 'submission',
-      label: 'Submission',
+      key: "submission",
+      label: "Submission",
       render: (row) => `#${row.submission}`,
     },
-    { key: 'score', label: 'Score' },
+    { key: "score", label: "Score" },
     {
-      key: 'feedback',
-      label: 'Feedback',
+      key: "feedback",
+      label: "Feedback",
       render: (row) => shortFeedback(row.feedback),
     },
     {
-      key: 'actions',
-      label: '',
+      key: "actions",
+      label: "",
       render: (row) => (
         <div className="flex gap-1">
           <Button variant="ghost" onClick={() => startEdit(row)} title="Edit">
@@ -225,20 +228,23 @@ export default function ResultsPage() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div>
-      <PageHeader title="Results" subtitle="Scores and feedback for submitted work." />
+      <PageHeader
+        title="Results"
+        subtitle="Scores and feedback for submitted work."
+      />
 
-      <Alert kind="error" onClose={() => setError('')}>
+      <Alert kind="error" onClose={() => setError("")}>
         {error}
       </Alert>
 
       {showForm && (
         <div className="mb-6">
           <Card
-            title={editingId ? `Edit result #${editingId}` : 'New result'}
+            title={editingId ? `Edit result #${editingId}` : "New result"}
             action={
               <Button variant="ghost" onClick={cancelForm}>
                 <X size={14} />
@@ -249,10 +255,13 @@ export default function ResultsPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 {/* The dropdown is built from the submission list we loaded
                     above. Its value is the submission's id number. */}
-                <Field label="Submission (required)" error={fieldErrors.submission}>
+                <Field
+                  label="Submission (required)"
+                  error={fieldErrors.submission}
+                >
                   <Select
                     value={form.submission}
-                    onChange={(e) => update('submission', e.target.value)}
+                    onChange={(e) => update("submission", e.target.value)}
                     options={submissionRows.map((s) => ({
                       value: s.id,
                       label: `Submission #${s.id}`,
@@ -269,7 +278,7 @@ export default function ResultsPage() {
                     type="number"
                     step="0.01"
                     value={form.score}
-                    onChange={(e) => update('score', e.target.value)}
+                    onChange={(e) => update("score", e.target.value)}
                     required
                   />
                 </Field>
@@ -278,14 +287,18 @@ export default function ResultsPage() {
               <Field label="Feedback (required)" error={fieldErrors.feedback}>
                 <Textarea
                   value={form.feedback}
-                  onChange={(e) => update('feedback', e.target.value)}
+                  onChange={(e) => update("feedback", e.target.value)}
                   required
                 />
               </Field>
 
               <div className="flex gap-2">
                 <Button type="submit" disabled={saving}>
-                  {saving ? 'Saving...' : editingId ? 'Save changes' : 'Create result'}
+                  {saving
+                    ? "Saving..."
+                    : editingId
+                      ? "Save changes"
+                      : "Create result"}
                 </Button>
                 <Button type="button" variant="secondary" onClick={cancelForm}>
                   Cancel
@@ -297,7 +310,7 @@ export default function ResultsPage() {
       )}
 
       <Card
-        title={`${rows.length} result${rows.length === 1 ? '' : 's'}`}
+        title={`${rows.length} result${rows.length === 1 ? "" : "s"}`}
         action={
           !showForm && (
             <Button onClick={startCreate}>
@@ -314,5 +327,5 @@ export default function ResultsPage() {
         )}
       </Card>
     </div>
-  )
+  );
 }

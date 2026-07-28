@@ -12,9 +12,9 @@
 // A teacher has no foreign keys, so there is nothing extra to look up.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
-import { teachers } from '../api'
+import { useEffect, useState } from "react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { teachers } from "../api";
 import {
   Alert,
   Button,
@@ -24,126 +24,126 @@ import {
   PageHeader,
   Spinner,
   Table,
-} from '../components/ui'
+} from "../components/ui";
 
 // The shape of one empty form. Keeping it here means "reset the form" is
 // just setForm(EMPTY_FORM).
 const EMPTY_FORM = {
-  name: '',
-  email: '',
-  subject: '',
+  name: "",
+  email: "",
+  subject: "",
   is_active: true,
-}
+};
 
 export default function TeachersPage() {
   // ---- 1. state --------------------------------------------------------
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editingId, setEditingId] = useState(null) // null means "creating"
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null); // null means "creating"
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ---- 2. read the list ------------------------------------------------
   async function load() {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
     try {
       // No pagination on this backend, so the response is a plain array.
-      const data = await teachers.list()
-      setRows(data)
+      const data = await teachers.list();
+      setRows(data);
     } catch (err) {
-      setError(err.text || 'Could not load teachers')
+      setError(err.text || "Could not load teachers");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   // ---- 3. run load() once when the page opens --------------------------
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
   function update(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }))
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function startCreate() {
-    setForm(EMPTY_FORM)
-    setEditingId(null)
-    setFieldErrors({})
-    setShowForm(true)
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function startEdit(row) {
     setForm({
-      name: row.name ?? '',
-      email: row.email ?? '',
-      subject: row.subject ?? '',
+      name: row.name ?? "",
+      email: row.email ?? "",
+      subject: row.subject ?? "",
       is_active: row.is_active,
-    })
-    setEditingId(row.id)
-    setFieldErrors({})
-    setShowForm(true)
+    });
+    setEditingId(row.id);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function cancelForm() {
-    setShowForm(false)
-    setEditingId(null)
-    setFieldErrors({})
+    setShowForm(false);
+    setEditingId(null);
+    setFieldErrors({});
   }
 
   // ---- 4. create or update ---------------------------------------------
   async function handleSubmit(event) {
-    event.preventDefault()
-    setError('')
-    setFieldErrors({})
-    setSaving(true)
+    event.preventDefault();
+    setError("");
+    setFieldErrors({});
+    setSaving(true);
     try {
       if (editingId) {
-        await teachers.update(editingId, form)
+        await teachers.update(editingId, form);
       } else {
-        await teachers.create(form)
+        await teachers.create(form);
       }
-      cancelForm()
-      await load() // refresh the table so it shows the change
+      cancelForm();
+      await load(); // refresh the table so it shows the change
     } catch (err) {
-      setError(err.text || 'Could not save')
-      setFieldErrors(err.fieldErrors || {})
+      setError(err.text || "Could not save");
+      setFieldErrors(err.fieldErrors || {});
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   // ---- 5. delete --------------------------------------------------------
   async function handleDelete(row) {
-    if (!window.confirm(`Delete teacher "${row.name}"?`)) return
-    setError('')
+    if (!window.confirm(`Delete teacher "${row.name}"?`)) return;
+    setError("");
     try {
-      await teachers.remove(row.id)
-      await load()
+      await teachers.remove(row.id);
+      await load();
     } catch (err) {
-      setError(err.text || 'Could not delete')
+      setError(err.text || "Could not delete");
     }
   }
 
   // ---- 6. the screen ----------------------------------------------------
   const columns = [
-    { key: 'id', label: 'ID' },
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
-    { key: 'subject', label: 'Subject' },
+    { key: "id", label: "ID" },
+    { key: "name", label: "Name" },
+    { key: "email", label: "Email" },
+    { key: "subject", label: "Subject" },
     {
-      key: 'is_active',
-      label: 'Active',
-      render: (row) => (row.is_active ? 'Yes' : 'No'),
+      key: "is_active",
+      label: "Active",
+      render: (row) => (row.is_active ? "Yes" : "No"),
     },
     {
-      key: 'actions',
-      label: '',
+      key: "actions",
+      label: "",
       render: (row) => (
         <div className="flex gap-1">
           <Button variant="ghost" onClick={() => startEdit(row)} title="Edit">
@@ -160,20 +160,20 @@ export default function TeachersPage() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div>
       <PageHeader title="Teachers" subtitle="The people who teach courses." />
 
-      <Alert kind="error" onClose={() => setError('')}>
+      <Alert kind="error" onClose={() => setError("")}>
         {error}
       </Alert>
 
       {showForm && (
         <div className="mb-6">
           <Card
-            title={editingId ? `Edit teacher #${editingId}` : 'New teacher'}
+            title={editingId ? `Edit teacher #${editingId}` : "New teacher"}
             action={
               <Button variant="ghost" onClick={cancelForm}>
                 <X size={14} />
@@ -185,7 +185,7 @@ export default function TeachersPage() {
                 <Field label="Name" error={fieldErrors.name}>
                   <Input
                     value={form.name}
-                    onChange={(e) => update('name', e.target.value)}
+                    onChange={(e) => update("name", e.target.value)}
                   />
                 </Field>
 
@@ -193,7 +193,7 @@ export default function TeachersPage() {
                   <Input
                     type="email"
                     value={form.email}
-                    onChange={(e) => update('email', e.target.value)}
+                    onChange={(e) => update("email", e.target.value)}
                   />
                 </Field>
 
@@ -202,7 +202,7 @@ export default function TeachersPage() {
                 <Field label="Subject (required)" error={fieldErrors.subject}>
                   <Input
                     value={form.subject}
-                    onChange={(e) => update('subject', e.target.value)}
+                    onChange={(e) => update("subject", e.target.value)}
                     required
                   />
                 </Field>
@@ -212,7 +212,7 @@ export default function TeachersPage() {
                 <input
                   type="checkbox"
                   checked={form.is_active}
-                  onChange={(e) => update('is_active', e.target.checked)}
+                  onChange={(e) => update("is_active", e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300"
                 />
                 Active
@@ -220,7 +220,11 @@ export default function TeachersPage() {
 
               <div className="flex gap-2">
                 <Button type="submit" disabled={saving}>
-                  {saving ? 'Saving...' : editingId ? 'Save changes' : 'Create teacher'}
+                  {saving
+                    ? "Saving..."
+                    : editingId
+                      ? "Save changes"
+                      : "Create teacher"}
                 </Button>
                 <Button type="button" variant="secondary" onClick={cancelForm}>
                   Cancel
@@ -232,7 +236,7 @@ export default function TeachersPage() {
       )}
 
       <Card
-        title={`${rows.length} teacher${rows.length === 1 ? '' : 's'}`}
+        title={`${rows.length} teacher${rows.length === 1 ? "" : "s"}`}
         action={
           !showForm && (
             <Button onClick={startCreate}>
@@ -249,5 +253,5 @@ export default function TeachersPage() {
         )}
       </Card>
     </div>
-  )
+  );
 }

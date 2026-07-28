@@ -14,9 +14,9 @@
 // same student CAN be enrolled in the same course twice. Nothing stops it.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
-import { enrollments, students, courses } from '../api'
+import { useEffect, useState } from "react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { enrollments, students, courses } from "../api";
 import {
   Alert,
   Button,
@@ -26,7 +26,7 @@ import {
   Select,
   Spinner,
   Table,
-} from '../components/ui'
+} from "../components/ui";
 
 // The shape of one empty form. Keeping it here means "reset the form" is
 // just setForm(EMPTY_FORM).
@@ -34,31 +34,31 @@ import {
 // enrollment_date is NOT here on purpose. The model uses auto_now_add, so
 // Django sets it and silently ignores whatever we try to send.
 const EMPTY_FORM = {
-  student: '',
-  course: '',
-}
+  student: "",
+  course: "",
+};
 
 export default function EnrollmentsPage() {
   // ---- 1. state --------------------------------------------------------
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   // The two parent lists. We need them for the dropdowns AND for turning the
   // id numbers in the table back into readable names.
-  const [studentRows, setStudentRows] = useState([])
-  const [courseRows, setCourseRows] = useState([])
+  const [studentRows, setStudentRows] = useState([]);
+  const [courseRows, setCourseRows] = useState([]);
 
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editingId, setEditingId] = useState(null) // null means "creating"
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null); // null means "creating"
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ---- 2. read the lists -----------------------------------------------
   async function load() {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
     try {
       // All three requests go out at the same time instead of one after
       // another, so the page appears faster.
@@ -66,31 +66,31 @@ export default function EnrollmentsPage() {
         enrollments.list(),
         students.list(),
         courses.list(),
-      ])
-      setRows(enrollmentData)
-      setStudentRows(studentData)
-      setCourseRows(courseData)
+      ]);
+      setRows(enrollmentData);
+      setStudentRows(studentData);
+      setCourseRows(courseData);
     } catch (err) {
-      setError(err.text || 'Could not load enrollments')
+      setError(err.text || "Could not load enrollments");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   // ---- 3. run load() once when the page opens --------------------------
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
   function update(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }))
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function startCreate() {
-    setForm(EMPTY_FORM)
-    setEditingId(null)
-    setFieldErrors({})
-    setShowForm(true)
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function startEdit(row) {
@@ -98,26 +98,26 @@ export default function EnrollmentsPage() {
     // a string, so turn them into strings here or the dropdown looks empty.
     // We turn them back into numbers before sending.
     setForm({
-      student: row.student != null ? String(row.student) : '',
-      course: row.course != null ? String(row.course) : '',
-    })
-    setEditingId(row.id)
-    setFieldErrors({})
-    setShowForm(true)
+      student: row.student != null ? String(row.student) : "",
+      course: row.course != null ? String(row.course) : "",
+    });
+    setEditingId(row.id);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function cancelForm() {
-    setShowForm(false)
-    setEditingId(null)
-    setFieldErrors({})
+    setShowForm(false);
+    setEditingId(null);
+    setFieldErrors({});
   }
 
   // ---- 4. create or update ---------------------------------------------
   async function handleSubmit(event) {
-    event.preventDefault()
-    setError('')
-    setFieldErrors({})
-    setSaving(true)
+    event.preventDefault();
+    setError("");
+    setFieldErrors({});
+    setSaving(true);
     try {
       // Build the payload by hand for two reasons:
       //   * a <select> hands us a STRING ("3"), and Django wants a number
@@ -127,34 +127,34 @@ export default function EnrollmentsPage() {
       //     (The Select is also required, so the browser normally blocks this
       //     before we ever get here.)
       const payload = {
-        student: form.student === '' ? null : Number(form.student),
-        course: form.course === '' ? null : Number(form.course),
-      }
+        student: form.student === "" ? null : Number(form.student),
+        course: form.course === "" ? null : Number(form.course),
+      };
 
       if (editingId) {
-        await enrollments.update(editingId, payload)
+        await enrollments.update(editingId, payload);
       } else {
-        await enrollments.create(payload)
+        await enrollments.create(payload);
       }
-      cancelForm()
-      await load() // refresh the table so it shows the change
+      cancelForm();
+      await load(); // refresh the table so it shows the change
     } catch (err) {
-      setError(err.text || 'Could not save')
-      setFieldErrors(err.fieldErrors || {})
+      setError(err.text || "Could not save");
+      setFieldErrors(err.fieldErrors || {});
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   // ---- 5. delete --------------------------------------------------------
   async function handleDelete(row) {
-    if (!window.confirm('Delete this enrollment?')) return
-    setError('')
+    if (!window.confirm("Delete this enrollment?")) return;
+    setError("");
     try {
-      await enrollments.remove(row.id)
-      await load()
+      await enrollments.remove(row.id);
+      await load();
     } catch (err) {
-      setError(err.text || 'Could not delete')
+      setError(err.text || "Could not delete");
     }
   }
 
@@ -165,27 +165,27 @@ export default function EnrollmentsPage() {
   // table never goes blank. Student.name is blank=True/null=True on the model,
   // so || is deliberate: it catches '' as well as null.
   const studentName = (id) =>
-    studentRows.find((s) => s.id === id)?.name || `Student #${id}`
+    studentRows.find((s) => s.id === id)?.name || `Student #${id}`;
   const courseTitle = (id) =>
-    courseRows.find((c) => c.id === id)?.title ?? `Course #${id}`
+    courseRows.find((c) => c.id === id)?.title ?? `Course #${id}`;
 
   const columns = [
-    { key: 'id', label: 'ID' },
+    { key: "id", label: "ID" },
     {
-      key: 'student',
-      label: 'Student',
+      key: "student",
+      label: "Student",
       render: (row) => studentName(row.student),
     },
     {
-      key: 'course',
-      label: 'Course',
+      key: "course",
+      label: "Course",
       render: (row) => courseTitle(row.course),
     },
     // Read-only: the server stamps this date when the row is created.
-    { key: 'enrollment_date', label: 'Enrolled' },
+    { key: "enrollment_date", label: "Enrolled" },
     {
-      key: 'actions',
-      label: '',
+      key: "actions",
+      label: "",
       render: (row) => (
         <div className="flex gap-1">
           <Button variant="ghost" onClick={() => startEdit(row)} title="Edit">
@@ -202,7 +202,7 @@ export default function EnrollmentsPage() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div>
@@ -211,14 +211,16 @@ export default function EnrollmentsPage() {
         subtitle="Which student is taking which course."
       />
 
-      <Alert kind="error" onClose={() => setError('')}>
+      <Alert kind="error" onClose={() => setError("")}>
         {error}
       </Alert>
 
       {showForm && (
         <div className="mb-6">
           <Card
-            title={editingId ? `Edit enrollment #${editingId}` : 'New enrollment'}
+            title={
+              editingId ? `Edit enrollment #${editingId}` : "New enrollment"
+            }
             action={
               <Button variant="ghost" onClick={cancelForm}>
                 <X size={14} />
@@ -232,7 +234,7 @@ export default function EnrollmentsPage() {
                 <Field label="Student (required)" error={fieldErrors.student}>
                   <Select
                     value={form.student}
-                    onChange={(e) => update('student', e.target.value)}
+                    onChange={(e) => update("student", e.target.value)}
                     placeholder="Choose a student..."
                     options={studentRows.map((s) => ({
                       value: s.id,
@@ -245,7 +247,7 @@ export default function EnrollmentsPage() {
                 <Field label="Course (required)" error={fieldErrors.course}>
                   <Select
                     value={form.course}
-                    onChange={(e) => update('course', e.target.value)}
+                    onChange={(e) => update("course", e.target.value)}
                     placeholder="Choose a course..."
                     options={courseRows.map((c) => ({
                       value: c.id,
@@ -261,10 +263,10 @@ export default function EnrollmentsPage() {
               <div className="flex gap-2">
                 <Button type="submit" disabled={saving}>
                   {saving
-                    ? 'Saving...'
+                    ? "Saving..."
                     : editingId
-                      ? 'Save changes'
-                      : 'Create enrollment'}
+                      ? "Save changes"
+                      : "Create enrollment"}
                 </Button>
                 <Button type="button" variant="secondary" onClick={cancelForm}>
                   Cancel
@@ -276,7 +278,7 @@ export default function EnrollmentsPage() {
       )}
 
       <Card
-        title={`${rows.length} enrollment${rows.length === 1 ? '' : 's'}`}
+        title={`${rows.length} enrollment${rows.length === 1 ? "" : "s"}`}
         action={
           !showForm && (
             <Button onClick={startCreate}>
@@ -293,5 +295,5 @@ export default function EnrollmentsPage() {
         )}
       </Card>
     </div>
-  )
+  );
 }

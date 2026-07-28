@@ -22,9 +22,9 @@
 //     on the server; the dropdowns below cannot enforce it.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from 'react'
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
-import { assignments, courses, lessons } from '../api'
+import { useEffect, useState } from "react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { assignments, courses, lessons } from "../api";
 import {
   Alert,
   Button,
@@ -36,19 +36,19 @@ import {
   Spinner,
   Table,
   Textarea,
-} from '../components/ui'
+} from "../components/ui";
 
 // The shape of one empty form. Keeping it here means "reset the form" is
 // just setForm(EMPTY_FORM).
 // course and lesson start as '' because that is what an unchosen <select>
 // gives us.
 const EMPTY_FORM = {
-  title: '',
-  description: '',
-  course: '',
-  lesson: '',
-  due_date: '',
-}
+  title: "",
+  description: "",
+  course: "",
+  lesson: "",
+  due_date: "",
+};
 
 // --- due_date and time zones ------------------------------------------------
 // The API stores UTC and sends it back with a Z on the end, like
@@ -64,41 +64,41 @@ const EMPTY_FORM = {
 
 // API (UTC) -> what the input should display (local)
 function isoToInput(isoString) {
-  if (!isoString) return ''
-  const d = new Date(isoString)
-  if (Number.isNaN(d.getTime())) return ''
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return "";
   // Subtract the time zone offset so that calling .toISOString() below yields
   // the LOCAL clock reading rather than the UTC one.
-  const localMs = d.getTime() - d.getTimezoneOffset() * 60 * 1000
-  return new Date(localMs).toISOString().slice(0, 16)
+  const localMs = d.getTime() - d.getTimezoneOffset() * 60 * 1000;
+  return new Date(localMs).toISOString().slice(0, 16);
 }
 
 // What the user typed (local) -> what the API should store (UTC)
 function inputToIso(inputValue) {
-  if (!inputValue) return null
-  const d = new Date(inputValue) // a value with no Z is read as local time
-  if (Number.isNaN(d.getTime())) return null
-  return d.toISOString()
+  if (!inputValue) return null;
+  const d = new Date(inputValue); // a value with no Z is read as local time
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
 }
 
 export default function AssignmentsPage() {
   // ---- 1. state --------------------------------------------------------
-  const [rows, setRows] = useState([])
-  const [courseRows, setCourseRows] = useState([]) // for the dropdown + lookups
-  const [lessonRows, setLessonRows] = useState([]) // same, for lessons
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
+  const [rows, setRows] = useState([]);
+  const [courseRows, setCourseRows] = useState([]); // for the dropdown + lookups
+  const [lessonRows, setLessonRows] = useState([]); // same, for lessons
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [editingId, setEditingId] = useState(null) // null means "creating"
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null); // null means "creating"
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // ---- 2. read the lists -----------------------------------------------
   async function load() {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
     try {
       // Three requests, sent at the same time instead of one after another,
       // so the page appears faster. Promise.all hands back the answers in
@@ -108,60 +108,60 @@ export default function AssignmentsPage() {
         assignments.list(),
         courses.list(),
         lessons.list(),
-      ])
-      setRows(assignmentData)
-      setCourseRows(courseData)
-      setLessonRows(lessonData)
+      ]);
+      setRows(assignmentData);
+      setCourseRows(courseData);
+      setLessonRows(lessonData);
     } catch (err) {
-      setError(err.text || 'Could not load assignments')
+      setError(err.text || "Could not load assignments");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   // ---- 3. run load() once when the page opens --------------------------
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
   function update(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }))
+    setForm((prev) => ({ ...prev, [name]: value }));
   }
 
   function startCreate() {
-    setForm(EMPTY_FORM)
-    setEditingId(null)
-    setFieldErrors({})
-    setShowForm(true)
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function startEdit(row) {
     setForm({
-      title: row.title ?? '',
-      description: row.description ?? '',
+      title: row.title ?? "",
+      description: row.description ?? "",
       // The ids are numbers, but a <select> value has to be a string,
       // otherwise the dropdown shows the placeholder instead of the row.
-      course: row.course ? String(row.course) : '',
-      lesson: row.lesson ? String(row.lesson) : '',
+      course: row.course ? String(row.course) : "",
+      lesson: row.lesson ? String(row.lesson) : "",
       due_date: isoToInput(row.due_date),
-    })
-    setEditingId(row.id)
-    setFieldErrors({})
-    setShowForm(true)
+    });
+    setEditingId(row.id);
+    setFieldErrors({});
+    setShowForm(true);
   }
 
   function cancelForm() {
-    setShowForm(false)
-    setEditingId(null)
-    setFieldErrors({})
+    setShowForm(false);
+    setEditingId(null);
+    setFieldErrors({});
   }
 
   // ---- 4. create or update ---------------------------------------------
   async function handleSubmit(event) {
-    event.preventDefault()
-    setError('')
-    setFieldErrors({})
-    setSaving(true)
+    event.preventDefault();
+    setError("");
+    setFieldErrors({});
+    setSaving(true);
     try {
       // Build the payload by hand, because the two dropdowns hold strings
       // and Django wants numbers. Number('') is 0, which would look like a
@@ -170,35 +170,35 @@ export default function AssignmentsPage() {
       const payload = {
         title: form.title,
         description: form.description,
-        course: form.course === '' ? null : Number(form.course),
-        lesson: form.lesson === '' ? null : Number(form.lesson),
+        course: form.course === "" ? null : Number(form.course),
+        lesson: form.lesson === "" ? null : Number(form.lesson),
         due_date: inputToIso(form.due_date),
-      }
+      };
 
       if (editingId) {
-        await assignments.update(editingId, payload)
+        await assignments.update(editingId, payload);
       } else {
-        await assignments.create(payload)
+        await assignments.create(payload);
       }
-      cancelForm()
-      await load() // refresh the table so it shows the change
+      cancelForm();
+      await load(); // refresh the table so it shows the change
     } catch (err) {
-      setError(err.text || 'Could not save')
-      setFieldErrors(err.fieldErrors || {})
+      setError(err.text || "Could not save");
+      setFieldErrors(err.fieldErrors || {});
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
   // ---- 5. delete --------------------------------------------------------
   async function handleDelete(row) {
-    if (!window.confirm(`Delete assignment "${row.title}"?`)) return
-    setError('')
+    if (!window.confirm(`Delete assignment "${row.title}"?`)) return;
+    setError("");
     try {
-      await assignments.remove(row.id)
-      await load()
+      await assignments.remove(row.id);
+      await load();
     } catch (err) {
-      setError(err.text || 'Could not delete')
+      setError(err.text || "Could not delete");
     }
   }
 
@@ -207,34 +207,36 @@ export default function AssignmentsPage() {
   // The API only gives us a number for course and lesson, so look the title
   // up in the lists we loaded. If the row is missing (deleted, or not loaded
   // yet) fall back to showing the raw id so the cell is never blank.
-  const courseTitle = (id) => courseRows.find((c) => c.id === id)?.title ?? `#${id}`
-  const lessonTitle = (id) => lessonRows.find((l) => l.id === id)?.title ?? `#${id}`
+  const courseTitle = (id) =>
+    courseRows.find((c) => c.id === id)?.title ?? `#${id}`;
+  const lessonTitle = (id) =>
+    lessonRows.find((l) => l.id === id)?.title ?? `#${id}`;
 
   // Turn "2026-08-01T14:30:00Z" into something a person can read.
   // new Date(null) would print 1 January 1970, so check for a value first.
-  const dueDate = (value) => (value ? new Date(value).toLocaleString() : '—')
+  const dueDate = (value) => (value ? new Date(value).toLocaleString() : "—");
 
   const columns = [
-    { key: 'id', label: 'ID' },
-    { key: 'title', label: 'Title' },
+    { key: "id", label: "ID" },
+    { key: "title", label: "Title" },
     {
-      key: 'course',
-      label: 'Course',
+      key: "course",
+      label: "Course",
       render: (row) => courseTitle(row.course),
     },
     {
-      key: 'lesson',
-      label: 'Lesson',
+      key: "lesson",
+      label: "Lesson",
       render: (row) => lessonTitle(row.lesson),
     },
     {
-      key: 'due_date',
-      label: 'Due',
+      key: "due_date",
+      label: "Due",
       render: (row) => dueDate(row.due_date),
     },
     {
-      key: 'actions',
-      label: '',
+      key: "actions",
+      label: "",
       render: (row) => (
         <div className="flex gap-1">
           <Button variant="ghost" onClick={() => startEdit(row)} title="Edit">
@@ -251,20 +253,22 @@ export default function AssignmentsPage() {
         </div>
       ),
     },
-  ]
+  ];
 
   return (
     <div>
       <PageHeader title="Assignments" subtitle="Work set against a lesson." />
 
-      <Alert kind="error" onClose={() => setError('')}>
+      <Alert kind="error" onClose={() => setError("")}>
         {error}
       </Alert>
 
       {showForm && (
         <div className="mb-6">
           <Card
-            title={editingId ? `Edit assignment #${editingId}` : 'New assignment'}
+            title={
+              editingId ? `Edit assignment #${editingId}` : "New assignment"
+            }
             action={
               <Button variant="ghost" onClick={cancelForm}>
                 <X size={14} />
@@ -276,7 +280,7 @@ export default function AssignmentsPage() {
                 <Field label="Title (required)" error={fieldErrors.title}>
                   <Input
                     value={form.title}
-                    onChange={(e) => update('title', e.target.value)}
+                    onChange={(e) => update("title", e.target.value)}
                     required
                   />
                 </Field>
@@ -287,7 +291,7 @@ export default function AssignmentsPage() {
                   <Input
                     type="datetime-local"
                     value={form.due_date}
-                    onChange={(e) => update('due_date', e.target.value)}
+                    onChange={(e) => update("due_date", e.target.value)}
                     required
                   />
                 </Field>
@@ -298,7 +302,7 @@ export default function AssignmentsPage() {
                 <Field label="Course (required)" error={fieldErrors.course}>
                   <Select
                     value={form.course}
-                    onChange={(e) => update('course', e.target.value)}
+                    onChange={(e) => update("course", e.target.value)}
                     options={courseRows.map((c) => ({
                       value: c.id,
                       label: c.title,
@@ -314,7 +318,7 @@ export default function AssignmentsPage() {
                 <Field label="Lesson (required)" error={fieldErrors.lesson}>
                   <Select
                     value={form.lesson}
-                    onChange={(e) => update('lesson', e.target.value)}
+                    onChange={(e) => update("lesson", e.target.value)}
                     options={lessonRows.map((l) => ({
                       value: l.id,
                       label: l.title,
@@ -325,10 +329,13 @@ export default function AssignmentsPage() {
                 </Field>
               </div>
 
-              <Field label="Description (required)" error={fieldErrors.description}>
+              <Field
+                label="Description (required)"
+                error={fieldErrors.description}
+              >
                 <Textarea
                   value={form.description}
-                  onChange={(e) => update('description', e.target.value)}
+                  onChange={(e) => update("description", e.target.value)}
                   required
                 />
               </Field>
@@ -336,10 +343,10 @@ export default function AssignmentsPage() {
               <div className="flex gap-2">
                 <Button type="submit" disabled={saving}>
                   {saving
-                    ? 'Saving...'
+                    ? "Saving..."
                     : editingId
-                      ? 'Save changes'
-                      : 'Create assignment'}
+                      ? "Save changes"
+                      : "Create assignment"}
                 </Button>
                 <Button type="button" variant="secondary" onClick={cancelForm}>
                   Cancel
@@ -351,7 +358,7 @@ export default function AssignmentsPage() {
       )}
 
       <Card
-        title={`${rows.length} assignment${rows.length === 1 ? '' : 's'}`}
+        title={`${rows.length} assignment${rows.length === 1 ? "" : "s"}`}
         action={
           !showForm && (
             <Button onClick={startCreate}>
@@ -368,5 +375,5 @@ export default function AssignmentsPage() {
         )}
       </Card>
     </div>
-  )
+  );
 }
