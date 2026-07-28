@@ -1,4 +1,5 @@
 from .models import  Assignment, Enrollment, Lesson, Profile, Results, Submission, Teacher, Student,Course
+from django.db import transaction
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
@@ -19,9 +20,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'phone', 'first_name', 'last_name']
+        fields = ['id', 'username', 'email', 'password', 'phone', 'first_name', 'last_name']
+        read_only_fields = ['id']
         extra_kwargs = {'password': {'write_only': True}}
 
+    def validate_phone(self, value):
+        if Profile.objects.filter(phone=value).exists():
+            raise serializers.ValidationError("This phone number is already registered.")
+        return value
+
+    @transaction.atomic
     def create(self, validated_data):
         phone = validated_data.pop('phone')
         email = validated_data.pop('email')
