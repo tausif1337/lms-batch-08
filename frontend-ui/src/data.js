@@ -1,14 +1,22 @@
 // ---------------------------------------------------------------------------
-// Static sample data.
+// ALL THE DATA IN THE APP LIVES IN THIS FILE.
 //
-// This build has no backend. Nothing here is fetched, saved, or changed at
-// runtime — the arrays exist only so every screen has something to draw.
+// There is no server and no database here. Every table you see on screen is
+// drawn from one of the lists below. Nothing is ever added, changed, or
+// deleted while the app is running.
 //
-// Relations are plain id numbers, and the ids below line up with each other,
-// so the lookup columns render real names instead of "#3".
+// Want different rows on a page? Edit the list here and save. The screen
+// updates by itself.
 //
-// Timestamps carry no zone marker on purpose: they are read as local time both
-// in the tables and in the datetime inputs, so the two always agree.
+// A note on the numbers. A course does not hold the teacher's name, it holds
+// the teacher's id:
+//
+//     { id: 1, title: "Algebra I", teacher: 1 }
+//                                  ^^^^^^^^^^ this means teacher number 1
+//
+// So the Courses page looks up teacher 1 in the teachers list below to find
+// out that it is Amina Rahman. Every page that shows a name from another list
+// does the same thing.
 // ---------------------------------------------------------------------------
 
 export const teachers = [

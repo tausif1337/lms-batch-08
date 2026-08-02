@@ -1,13 +1,17 @@
+// Vite is the tool that runs the app while you work on it.
+// This file tells it two things: use React, and use Tailwind.
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  // Port 5180, well clear of the 5173-5175 range other local Vite apps sit in.
-  // There is no backend here, so there is no CORS whitelist to match and no
-  // strictPort: if 5180 is taken, Vite moving to the next free port is fine.
+
+  // Which port to open on. Other projects on this machine already use
+  // 5173 to 5175, so this one uses 5180 to stay out of their way.
+  // If 5180 is busy too, Vite quietly picks the next free number and tells
+  // you which one in the terminal.
   server: {
     port: 5180,
   },
