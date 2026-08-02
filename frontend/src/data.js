@@ -1,24 +1,3 @@
-// ---------------------------------------------------------------------------
-// ALL THE DATA IN THE APP LIVES IN THIS FILE.
-//
-// There is no server and no database here. Every table you see on screen is
-// drawn from one of the lists below. Nothing is ever added, changed, or
-// deleted while the app is running.
-//
-// Want different rows on a page? Edit the list here and save. The screen
-// updates by itself.
-//
-// A note on the numbers. A course does not hold the teacher's name, it holds
-// the teacher's id:
-//
-//     { id: 1, title: "Algebra I", teacher: 1 }
-//                                  ^^^^^^^^^^ this means teacher number 1
-//
-// So the Courses page looks up teacher 1 in the teachers list below to find
-// out that it is Amina Rahman. Every page that shows a name from another list
-// does the same thing.
-// ---------------------------------------------------------------------------
-
 export const teachers = [
   {
     id: 1,

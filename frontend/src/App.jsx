@@ -1,12 +1,3 @@
-// This file is the list of addresses (URLs) in the app.
-//
-// Read it like a table:
-//   address "/teachers"  ->  show the Teachers page
-//   address "/courses"   ->  show the Courses page
-//
-// Most pages sit inside <Sidebar>, so they get the menu on the left.
-// Login and Register do not, because those screens fill the whole window.
-
 import { Navigate, Route, Routes } from "react-router-dom";
 import Sidebar from "./Sidebar.jsx";
 
@@ -21,15 +12,14 @@ import Submissions from "./pages/Submissions.jsx";
 import Results from "./pages/Results.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
   return (
     <Routes>
-      {/* These two fill the whole window, with no menu. */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Everything below shows inside the sidebar frame. */}
       <Route element={<Sidebar />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/teachers" element={<Teachers />} />
@@ -42,8 +32,7 @@ export default function App() {
         <Route path="/results" element={<Results />} />
       </Route>
 
-      {/* Any address we do not know about sends you back to the dashboard. */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

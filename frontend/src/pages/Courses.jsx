@@ -1,22 +1,3 @@
-// ---------------------------------------------------------------------------
-// THE COURSES PAGE.
-//
-// This page is built the same way as Teachers.jsx. If anything here looks
-// new, open that file first, because it explains each idea from the start.
-//
-// The page has three parts, in this order:
-//   1. Remember things  — useState, for the form boxes
-//   2. Do things        — small functions the buttons call
-//   3. Show things      — the HTML that ends up on the screen
-//
-// The buttons and the boxes come from src/components, so every page uses the
-// same ones.
-//
-// One important thing: nothing you type is ever saved. This project has no
-// server and no database. Clicking "Save" only closes the form. The list you
-// see comes from src/data.js and never changes.
-// ---------------------------------------------------------------------------
-
 import { useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { courses, teachers } from "../data.js";
@@ -29,9 +10,6 @@ import {
   Textarea,
 } from "../components/index.js";
 
-// A course row does not hold the teacher's name. It holds the teacher's id
-// number, like teacher: 1. So to print a name on screen we have to go to the
-// teachers list and find the teacher whose id matches that number.
 function findTeacherName(teacherId) {
   const teacher = teachers.find((item) => item.id === teacherId);
   if (teacher) {
@@ -41,28 +19,13 @@ function findTeacherName(teacherId) {
 }
 
 export default function Courses() {
-  // =========================================================================
-  // 1. REMEMBER THINGS
-  // =========================================================================
-  // useState gives you two things:
-  //   title     -> what is in the box right now
-  //   setTitle  -> the function you call to change it
-  // The value in useState("") is what it starts as: an empty box.
   const [title, setTitle] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [description, setDescription] = useState("");
 
-  // Is the form on the screen? true means yes.
   const [formIsOpen, setFormIsOpen] = useState(false);
-
-  // Which course are we editing? 0 means "none, we are adding a new one".
   const [editingId, setEditingId] = useState(0);
 
-  // =========================================================================
-  // 2. DO THINGS
-  // =========================================================================
-
-  // The "Add course" button calls this. It empties every box first.
   function openEmptyForm() {
     setTitle("");
     setTeacherId("");
@@ -71,8 +34,6 @@ export default function Courses() {
     setFormIsOpen(true);
   }
 
-  // The pencil button calls this, and hands us the course from that row.
-  // We copy that course's details into the boxes.
   function openFormForEditing(course) {
     setTitle(course.title);
     setTeacherId(course.teacher);
@@ -85,24 +46,15 @@ export default function Courses() {
     setFormIsOpen(false);
   }
 
-  // This runs when the form is submitted.
-  // event.preventDefault() stops the browser reloading the whole page, which
-  // is what an HTML form normally does when you press its button.
   function handleSave(event) {
     event.preventDefault();
     closeForm();
   }
 
-  // =========================================================================
-  // 3. SHOW THINGS
-  // =========================================================================
   return (
     <div>
-      {/* ---- the title at the top of the page ---- */}
       <PageHeader title="Courses" subtitle="Every course, and who teaches it." />
 
-      {/* ---- the form ----
-          The && below means: only show this form when formIsOpen is true. */}
       {formIsOpen && (
         <form
           onSubmit={handleSave}
@@ -124,9 +76,6 @@ export default function Courses() {
               onChange={(event) => setTitle(event.target.value)}
             />
 
-            {/* A <Select> is a dropdown. The <option> lines inside it are
-                written here, one for every teacher. `placeholder` is the empty
-                first line, so the box starts blank. */}
             <Select
               label="Teacher"
               placeholder="Choose a teacher..."
@@ -141,8 +90,6 @@ export default function Courses() {
             </Select>
           </div>
 
-          {/* A <Textarea> is a taller box for longer text. It is three lines
-              tall unless you ask for more with rows={5}. */}
           <Textarea
             label="Description"
             className="mt-4"
@@ -159,7 +106,6 @@ export default function Courses() {
         </form>
       )}
 
-      {/* ---- the table of courses ---- */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
@@ -184,8 +130,6 @@ export default function Courses() {
             </thead>
 
             <tbody>
-              {/* .map() means "do this once for every course in the list".
-                  React needs the key so it can tell the rows apart. */}
               {courses.map((course) => (
                 <tr
                   key={course.id}
@@ -194,7 +138,6 @@ export default function Courses() {
                   <td className="px-3 py-2 text-slate-700">{course.id}</td>
                   <td className="px-3 py-2 text-slate-700">{course.title}</td>
                   <td className="px-3 py-2 text-slate-700">
-                    {/* truncate cuts long text off with a "..." at the end. */}
                     <span className="block max-w-xs truncate">
                       {course.description}
                     </span>
@@ -208,8 +151,6 @@ export default function Courses() {
                         <Pencil size={14} />
                       </IconButton>
 
-                      {/* This button does nothing. There is nothing to delete
-                          from, because the list is a fixed list in data.js. */}
                       <IconButton variant="danger">
                         <Trash2 size={14} />
                       </IconButton>

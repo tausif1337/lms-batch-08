@@ -1,17 +1,3 @@
-// ---------------------------------------------------------------------------
-// THE DASHBOARD PAGE — THE FIRST THING YOU SEE.
-//
-// This is the smallest page in the app. There is no form here and no table.
-// It shows eight tiles, and each tile is a link to one of the other pages.
-//
-// The number on a tile comes from counting a list in src/data.js. Writing
-// teachers.length is how you ask a list how many things are in it. Four
-// teachers in the list means teachers.length is 4.
-//
-// Nothing here is loaded from a server. Edit a list in src/data.js and the
-// number on the tile changes by itself.
-// ---------------------------------------------------------------------------
-
 import { Link } from "react-router-dom";
 import {
   BookOpen,
@@ -34,8 +20,6 @@ import {
 } from "../data.js";
 import { PageHeader } from "../components/index.js";
 
-// One line per tile. Each line says where the tile goes, what it is called,
-// how many rows that page has, and which little picture sits in the corner.
 const tiles = [
   {
     address: "/teachers",
@@ -90,17 +74,12 @@ const tiles = [
 export default function Dashboard() {
   return (
     <div>
-      {/* ---- the title at the top of the page ---- */}
       <PageHeader
         title="Welcome back, admin"
         subtitle="A quick count of everything in the system."
       />
 
-      {/* ---- the eight tiles ---- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* .map() means "do this once for every tile in the list above".
-            React needs the key so it can tell the tiles apart.
-            <Link> is a link that swaps the page without reloading it. */}
         {tiles.map((tile) => (
           <Link
             key={tile.address}

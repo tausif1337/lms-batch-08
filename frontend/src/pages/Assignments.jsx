@@ -1,22 +1,3 @@
-// ---------------------------------------------------------------------------
-// THE ASSIGNMENTS PAGE.
-//
-// This page is built the same way as Teachers.jsx. If anything here looks
-// new, open that file first, because it explains each idea from the start.
-//
-// The page has three parts, in this order:
-//   1. Remember things  — useState, for the form boxes
-//   2. Do things        — small functions the buttons call
-//   3. Show things      — the HTML that ends up on the screen
-//
-// The buttons and the boxes come from src/components, so every page uses the
-// same ones.
-//
-// One important thing: nothing you type is ever saved. This project has no
-// server and no database. Clicking "Save" only closes the form. The list you
-// see comes from src/data.js and never changes.
-// ---------------------------------------------------------------------------
-
 import { useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { assignments, courses, lessons } from "../data.js";
@@ -29,9 +10,6 @@ import {
   Textarea,
 } from "../components/index.js";
 
-// An assignment row does not hold the course title. It holds the course's id
-// number, like course: 1. So to print a title on screen we have to go to the
-// courses list and find the course whose id matches that number.
 function findCourseTitle(courseId) {
   const course = courses.find((item) => item.id === courseId);
   if (course) {
@@ -40,8 +18,6 @@ function findCourseTitle(courseId) {
   return "Unknown";
 }
 
-// The lesson works the same way. The row holds a lesson id, so we look that
-// id up in the lessons list to get the title.
 function findLessonTitle(lessonId) {
   const lesson = lessons.find((item) => item.id === lessonId);
   if (lesson) {
@@ -50,37 +26,20 @@ function findLessonTitle(lessonId) {
   return "Unknown";
 }
 
-// This turns 2026-08-15T23:59:00 into something readable in the reader's own
-// country format.
 function showDateAndTime(text) {
   return new Date(text).toLocaleString();
 }
 
 export default function Assignments() {
-  // =========================================================================
-  // 1. REMEMBER THINGS
-  // =========================================================================
-  // useState gives you two things:
-  //   title     -> what is in the box right now
-  //   setTitle  -> the function you call to change it
-  // The value in useState("") is what it starts as: an empty box.
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [courseId, setCourseId] = useState("");
   const [lessonId, setLessonId] = useState("");
   const [description, setDescription] = useState("");
 
-  // Is the form on the screen? true means yes.
   const [formIsOpen, setFormIsOpen] = useState(false);
-
-  // Which assignment are we editing? 0 means "none, we are adding a new one".
   const [editingId, setEditingId] = useState(0);
 
-  // =========================================================================
-  // 2. DO THINGS
-  // =========================================================================
-
-  // The "Add assignment" button calls this. It empties every box first.
   function openEmptyForm() {
     setTitle("");
     setDueDate("");
@@ -91,16 +50,9 @@ export default function Assignments() {
     setFormIsOpen(true);
   }
 
-  // The pencil button calls this, and hands us the assignment from that row.
-  // We copy that assignment's details into the boxes.
   function openFormForEditing(assignment) {
     setTitle(assignment.title);
-
-    // The stored date looks like "2026-08-15T23:59:00", but a datetime-local
-    // box only accepts the first 16 characters, "2026-08-15T23:59", so we cut
-    // the seconds off the end before putting it in the box.
     setDueDate(assignment.due_date.slice(0, 16));
-
     setCourseId(assignment.course);
     setLessonId(assignment.lesson);
     setDescription(assignment.description);
@@ -112,24 +64,15 @@ export default function Assignments() {
     setFormIsOpen(false);
   }
 
-  // This runs when the form is submitted.
-  // event.preventDefault() stops the browser reloading the whole page, which
-  // is what an HTML form normally does when you press its button.
   function handleSave(event) {
     event.preventDefault();
     closeForm();
   }
 
-  // =========================================================================
-  // 3. SHOW THINGS
-  // =========================================================================
   return (
     <div>
-      {/* ---- the title at the top of the page ---- */}
       <PageHeader title="Assignments" subtitle="Work set against a lesson." />
 
-      {/* ---- the form ----
-          The && below means: only show this form when formIsOpen is true. */}
       {formIsOpen && (
         <form
           onSubmit={handleSave}
@@ -151,8 +94,6 @@ export default function Assignments() {
               onChange={(event) => setTitle(event.target.value)}
             />
 
-            {/* type="datetime-local" gives the browser's own date and time
-                picker, so the reader does not have to type the date by hand. */}
             <Input
               label="Due date"
               type="datetime-local"
@@ -160,9 +101,6 @@ export default function Assignments() {
               onChange={(event) => setDueDate(event.target.value)}
             />
 
-            {/* A <Select> is a dropdown. The <option> lines inside it are
-                written here, one for every course. `placeholder` is the empty
-                first line, so the box starts blank. */}
             <Select
               label="Course"
               placeholder="Choose a course..."
@@ -190,8 +128,6 @@ export default function Assignments() {
             </Select>
           </div>
 
-          {/* A <Textarea> is a taller box for longer text. It is three lines
-              tall unless you ask for more with rows={5}. */}
           <Textarea
             label="Description"
             className="mt-4"
@@ -208,7 +144,6 @@ export default function Assignments() {
         </form>
       )}
 
-      {/* ---- the table of assignments ---- */}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
@@ -234,8 +169,6 @@ export default function Assignments() {
             </thead>
 
             <tbody>
-              {/* .map() means "do this once for every assignment in the list".
-                  React needs the key so it can tell the rows apart. */}
               {assignments.map((assignment) => (
                 <tr
                   key={assignment.id}
@@ -260,8 +193,6 @@ export default function Assignments() {
                         <Pencil size={14} />
                       </IconButton>
 
-                      {/* This button does nothing. There is nothing to delete
-                          from, because the list is a fixed list in data.js. */}
                       <IconButton variant="danger">
                         <Trash2 size={14} />
                       </IconButton>
