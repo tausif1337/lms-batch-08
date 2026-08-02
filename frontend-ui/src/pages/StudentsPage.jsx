@@ -1,28 +1,29 @@
 // ---------------------------------------------------------------------------
 // THE PATTERN PAGE.
 //
-// Every other resource page in this app is the same six steps as this one:
-//   1. state for the rows, the form, and the errors
-//   2. load() reads the list from the API
-//   3. useEffect() calls load() once when the page opens
-//   4. handleSubmit() creates a new row, or updates the row being edited
-//   5. handleDelete() asks for confirmation, then deletes
-//   6. the JSX: error banner, form, table
+// Every resource page in this UI-only build is the same four steps:
+//   1. rows come straight from the static list in data.js
+//   2. local state remembers whether the form panel is open, and what is typed
+//      into it
+//   3. Add / Edit open the panel; Save and Cancel close it again
+//   4. the JSX: form panel, then table
+//
+// Nothing is stored. Saving closes the panel and the table is unchanged,
+// because there is no backend and data.js is never written to. The Delete
+// button is decorative for the same reason.
 //
 // Read this file first. The others will then look familiar.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { students } from "../api";
+import { students } from "../data";
 import {
-  Alert,
   Button,
   Card,
   Field,
   Input,
   PageHeader,
-  Spinner,
   Table,
 } from "../components/ui";
 
@@ -37,102 +38,48 @@ const EMPTY_FORM = {
 };
 
 export default function StudentsPage() {
-  // ---- 1. state --------------------------------------------------------
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState({});
+  // ---- 1. the rows -------------------------------------------------------
+  const rows = students;
 
+  // ---- 2. form state -----------------------------------------------------
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null); // null means "creating"
   const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // ---- 2. read the list ------------------------------------------------
-  async function load() {
-    setLoading(true);
-    setError("");
-    try {
-      // No pagination on this backend, so the response is a plain array.
-      const data = await students.list();
-      setRows(data);
-    } catch (err) {
-      setError(err.text || "Could not load students");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ---- 3. run load() once when the page opens --------------------------
-  useEffect(() => {
-    load();
-  }, []);
 
   function update(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
+  // ---- 3. open and close the panel ---------------------------------------
   function startCreate() {
     setForm(EMPTY_FORM);
     setEditingId(null);
-    setFieldErrors({});
     setShowForm(true);
   }
 
   function startEdit(row) {
     setForm({
-      name: row.name ?? "",
-      email: row.email ?? "",
-      enrollment_date: row.enrollment_date ?? "",
-      roll_number: row.roll_number ?? "",
+      name: row.name,
+      email: row.email,
+      enrollment_date: row.enrollment_date,
+      roll_number: row.roll_number,
       is_active: row.is_active,
     });
     setEditingId(row.id);
-    setFieldErrors({});
     setShowForm(true);
   }
 
-  function cancelForm() {
+  function closeForm() {
     setShowForm(false);
     setEditingId(null);
-    setFieldErrors({});
   }
 
-  // ---- 4. create or update ---------------------------------------------
-  async function handleSubmit(event) {
+  function handleSubmit(event) {
     event.preventDefault();
-    setError("");
-    setFieldErrors({});
-    setSaving(true);
-    try {
-      if (editingId) {
-        await students.update(editingId, form);
-      } else {
-        await students.create(form);
-      }
-      cancelForm();
-      await load(); // refresh the table so it shows the change
-    } catch (err) {
-      setError(err.text || "Could not save");
-      setFieldErrors(err.fieldErrors || {});
-    } finally {
-      setSaving(false);
-    }
+    closeForm();
   }
 
-  // ---- 5. delete --------------------------------------------------------
-  async function handleDelete(row) {
-    if (!window.confirm(`Delete student "${row.name}"?`)) return;
-    setError("");
-    try {
-      await students.remove(row.id);
-      await load();
-    } catch (err) {
-      setError(err.text || "Could not delete");
-    }
-  }
-
-  // ---- 6. the screen ----------------------------------------------------
+  // ---- 4. the screen ------------------------------------------------------
   const columns = [
     { key: "id", label: "ID" },
     { key: "name", label: "Name" },
@@ -154,7 +101,6 @@ export default function StudentsPage() {
           </Button>
           <Button
             variant="ghost"
-            onClick={() => handleDelete(row)}
             title="Delete"
             className="text-red-600 hover:bg-red-50"
           >
@@ -172,30 +118,26 @@ export default function StudentsPage() {
         subtitle="Everyone enrolled in the school."
       />
 
-      <Alert kind="error" onClose={() => setError("")}>
-        {error}
-      </Alert>
-
       {showForm && (
         <div className="mb-6">
           <Card
             title={editingId ? `Edit student #${editingId}` : "New student"}
             action={
-              <Button variant="ghost" onClick={cancelForm}>
+              <Button variant="ghost" onClick={closeForm}>
                 <X size={14} />
               </Button>
             }
           >
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Name" error={fieldErrors.name}>
+                <Field label="Name">
                   <Input
                     value={form.name}
                     onChange={(e) => update("name", e.target.value)}
                   />
                 </Field>
 
-                <Field label="Email" error={fieldErrors.email}>
+                <Field label="Email">
                   <Input
                     type="email"
                     value={form.email}
@@ -203,24 +145,18 @@ export default function StudentsPage() {
                   />
                 </Field>
 
-                <Field label="Roll number" error={fieldErrors.roll_number}>
+                <Field label="Roll number">
                   <Input
                     value={form.roll_number}
                     onChange={(e) => update("roll_number", e.target.value)}
                   />
                 </Field>
 
-                {/* Django wants a plain YYYY-MM-DD string here, which is
-                    exactly what <input type="date"> produces. */}
-                <Field
-                  label="Enrollment date (required)"
-                  error={fieldErrors.enrollment_date}
-                >
+                <Field label="Enrollment date">
                   <Input
                     type="date"
                     value={form.enrollment_date}
                     onChange={(e) => update("enrollment_date", e.target.value)}
-                    required
                   />
                 </Field>
               </div>
@@ -236,14 +172,10 @@ export default function StudentsPage() {
               </label>
 
               <div className="flex gap-2">
-                <Button type="submit" disabled={saving}>
-                  {saving
-                    ? "Saving..."
-                    : editingId
-                      ? "Save changes"
-                      : "Create student"}
+                <Button type="submit">
+                  {editingId ? "Save changes" : "Create student"}
                 </Button>
-                <Button type="button" variant="secondary" onClick={cancelForm}>
+                <Button type="button" variant="secondary" onClick={closeForm}>
                   Cancel
                 </Button>
               </div>
@@ -263,11 +195,7 @@ export default function StudentsPage() {
           )
         }
       >
-        {loading ? (
-          <Spinner />
-        ) : (
-          <Table columns={columns} rows={rows} empty="No students yet." />
-        )}
+        <Table columns={columns} rows={rows} empty="No students yet." />
       </Card>
     </div>
   );

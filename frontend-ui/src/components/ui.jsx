@@ -3,8 +3,6 @@
 // Plain Tailwind classes, nothing clever.
 // ---------------------------------------------------------------------------
 
-import { AlertCircle, CheckCircle2, Loader2, X } from "lucide-react";
-
 export function Button({ variant = "primary", className = "", ...props }) {
   const styles = {
     primary: "bg-indigo-600 text-white hover:bg-indigo-700",
@@ -21,16 +19,13 @@ export function Button({ variant = "primary", className = "", ...props }) {
   );
 }
 
-export function Field({ label, error, children }) {
+export function Field({ label, children }) {
   return (
     <label className="block">
       <span className="mb-1 block text-sm font-medium text-slate-700">
         {label}
       </span>
       {children}
-      {error && (
-        <span className="mt-1 block text-xs text-red-600">{error}</span>
-      )}
     </label>
   );
 }
@@ -47,7 +42,6 @@ export function Textarea(props) {
 }
 
 // A dropdown for choosing a related row (a course, a teacher, ...).
-// The backend expects a plain id number, so that is what we send.
 export function Select({ options, placeholder = "Select...", ...props }) {
   return (
     <select className={inputClass} {...props}>
@@ -58,40 +52,6 @@ export function Select({ options, placeholder = "Select...", ...props }) {
         </option>
       ))}
     </select>
-  );
-}
-
-export function Alert({ kind = "error", children, onClose }) {
-  if (!children) return null;
-  const styles = {
-    error: "bg-red-50 text-red-800 border-red-200",
-    success: "bg-green-50 text-green-800 border-green-200",
-  };
-  const Icon = kind === "error" ? AlertCircle : CheckCircle2;
-  return (
-    <div
-      className={`mb-4 flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${styles[kind]}`}
-    >
-      <Icon size={16} className="mt-0.5 shrink-0" />
-      <span className="flex-1">{children}</span>
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="shrink-0 opacity-60 hover:opacity-100"
-        >
-          <X size={14} />
-        </button>
-      )}
-    </div>
-  );
-}
-
-export function Spinner({ label = "Loading..." }) {
-  return (
-    <div className="flex items-center gap-2 py-8 text-sm text-slate-500">
-      <Loader2 size={16} className="animate-spin" />
-      {label}
-    </div>
   );
 }
 

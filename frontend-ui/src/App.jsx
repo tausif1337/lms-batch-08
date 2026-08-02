@@ -1,8 +1,10 @@
 // Every URL in the app is listed here.
+//
+// This is the UI-only build: there is no auth, so nothing is gated. The login
+// and register screens are just two more pages you can walk into and out of.
 
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -19,19 +21,12 @@ import ResultsPage from "./pages/ResultsPage";
 export default function App() {
   return (
     <Routes>
-      {/* Public pages */}
+      {/* Standalone screens: no sidebar around them. */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Everything below needs a token. ProtectedRoute sends you to
-          /login if you do not have one. */}
-      <Route
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
+      {/* Everything else sits inside the sidebar frame. */}
+      <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/teachers" element={<TeachersPage />} />
         <Route path="/students" element={<StudentsPage />} />

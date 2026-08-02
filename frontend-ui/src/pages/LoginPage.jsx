@@ -1,35 +1,20 @@
+// Login screen. There is no authentication in this build — the form is here
+// for its looks, and submitting it simply walks you to the dashboard.
+
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
-import { useAuth } from "../AuthContext";
-import { Alert, Button, Field, Input } from "../components/ui";
+import { Button, Field, Input } from "../components/ui";
 
 export default function LoginPage() {
-  const { login } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
-  // The backend identifies you by PHONE. There is no username login.
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
 
-  // api.js redirects here with ?expired=1 when a token stops working.
-  const expired = searchParams.get("expired") === "1";
-
-  async function handleSubmit(event) {
+  function handleSubmit(event) {
     event.preventDefault();
-    setError("");
-    setBusy(true);
-    try {
-      await login(phone, password);
-      navigate("/");
-    } catch (err) {
-      setError(err.text || "Login failed");
-    } finally {
-      setBusy(false);
-    }
+    navigate("/");
   }
 
   return (
@@ -42,11 +27,6 @@ export default function LoginPage() {
           </h1>
         </div>
 
-        {expired && (
-          <Alert kind="error">Your session expired. Please log in again.</Alert>
-        )}
-        <Alert kind="error">{error}</Alert>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field label="Phone number">
             <Input
@@ -54,7 +34,6 @@ export default function LoginPage() {
               onChange={(e) => setPhone(e.target.value)}
               placeholder="01711110001"
               autoComplete="tel"
-              required
             />
           </Field>
 
@@ -64,12 +43,11 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              required
             />
           </Field>
 
-          <Button type="submit" disabled={busy} className="w-full">
-            {busy ? "Logging in..." : "Log in"}
+          <Button type="submit" className="w-full">
+            Log in
           </Button>
         </form>
 

@@ -1,4 +1,4 @@
-// The frame around every logged-in page: sidebar on the left, content on the right.
+// The frame around every page: sidebar on the left, content on the right.
 
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
@@ -13,7 +13,6 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { useAuth } from "../AuthContext";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -27,14 +26,11 @@ const NAV = [
   { to: "/results", label: "Results", icon: Trophy },
 ];
 
-export default function Layout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+// There is no session in this build, so the name in the footer is fixed.
+const DISPLAY_NAME = "admin";
 
-  function handleLogout() {
-    logout();
-    navigate("/login");
-  }
+export default function Layout() {
+  const navigate = useNavigate();
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -67,10 +63,12 @@ export default function Layout() {
         <div className="border-t border-slate-200 p-3">
           <div className="mb-2 flex items-center gap-2 px-2 text-sm text-slate-600">
             <UserRound size={16} />
-            <span className="truncate">{user?.username}</span>
+            <span className="truncate">{DISPLAY_NAME}</span>
           </div>
+          {/* Nothing to log out of. The button just walks you to the login
+              screen so that screen stays reachable. */}
           <button
-            onClick={handleLogout}
+            onClick={() => navigate("/login")}
             className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100"
           >
             <LogOut size={16} />

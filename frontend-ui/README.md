@@ -1,16 +1,51 @@
-# React + Vite
+# LMS — UI only
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The LMS admin screens with everything behind them taken out. No API calls, no
+authentication, no state that outlives a click. Use it to work on layout and
+styling without needing Django, a database, or a login.
 
-Currently, two official plugins are available:
+## Run it
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+Opens on <http://localhost:5180>. (The full-stack app in `../frontend` uses
+5173, so both can run side by side.)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## What is here
 
-## Expanding the ESLint configuration
+```
+src/
+  data.js              static sample rows for all eight resources
+  main.jsx             mounts the router
+  App.jsx              routes — nothing is gated
+  components/
+    Layout.jsx         sidebar frame
+    ui.jsx             Button, Field, Input, Textarea, Select, Card, Table, PageHeader
+  pages/               one page per screen
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+`src/pages/StudentsPage.jsx` is the pattern page. Every other resource page is
+the same shape, so read that one first.
+
+## How it behaves
+
+- Tables are drawn from the arrays in `src/data.js`.
+- **Add** and **Edit** open the form panel and fill it in. Typing works.
+- **Save** and **Cancel** close the panel. Nothing is written — the table does
+  not change, because `data.js` is never mutated.
+- **Delete** is decorative.
+- **Log in** and **Create account** accept anything and go to the dashboard.
+- **Log out** goes to the login screen. There is no session to end.
+
+## Differences from `../frontend`
+
+Removed: `api.js`, `AuthContext.jsx`, `ProtectedRoute.jsx`, `.env.example`, and
+the loading / error / saving states that only existed to report on network
+calls. The `Alert` and `Spinner` components went with them — nothing was left
+to show. Markup and Tailwind classes are otherwise unchanged.
+
+To wire this back to a real API, put the fetch layer back in `src/api.js` and
+swap the `../data` imports in each page for it.
