@@ -32,6 +32,7 @@ import {
   submissions,
   teachers,
 } from "../data.js";
+import { PageHeader } from "../components/index.js";
 
 // One line per tile. Each line says where the tile goes, what it is called,
 // how many rows that page has, and which little picture sits in the corner.
@@ -90,12 +91,10 @@ export default function Dashboard() {
   return (
     <div>
       {/* ---- the title at the top of the page ---- */}
-      <h1 className="text-2xl font-semibold text-slate-900">
-        Welcome back, admin
-      </h1>
-      <p className="mt-1 mb-6 text-sm text-slate-500">
-        A quick count of everything in the system.
-      </p>
+      <PageHeader
+        title="Welcome back, admin"
+        subtitle="A quick count of everything in the system."
+      />
 
       {/* ---- the eight tiles ---- */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

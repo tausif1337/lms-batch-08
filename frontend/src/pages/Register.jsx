@@ -6,19 +6,15 @@
 // No account is really created. There is no server here and nowhere to keep
 // an account. Pressing the button takes you to the dashboard, whatever you
 // typed in the boxes.
+//
+// The boxes and the button come from src/components, the same ones every
+// other page uses.
 // ---------------------------------------------------------------------------
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
-
-// These are just long strings of Tailwind classes, pulled out so the HTML
-// below stays readable. They are plain text, nothing clever.
-const blueButton =
-  "inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700";
-const inputBox =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500";
-const labelText = "mb-1 block text-sm font-medium text-slate-700";
+import { Button, Input } from "../components/index.js";
 
 export default function Register() {
   // useState gives you two things:
@@ -64,74 +60,55 @@ export default function Register() {
             <div className="space-y-4">
               {/* First name and last name share one row, two boxes wide. */}
               <div className="grid grid-cols-2 gap-3">
-                {/* Each box is a <label> wrapped around an <input>, so
-                    clicking the words puts the cursor in the box. */}
-                <label>
-                  <span className={labelText}>First name</span>
-                  <input
-                    className={inputBox}
-                    value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
-                  />
-                </label>
+                {/* Each <Input> is a <label> wrapped around a box, so clicking
+                    the words puts the cursor in the box. */}
+                <Input
+                  label="First name"
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                />
 
-                <label>
-                  <span className={labelText}>Last name</span>
-                  <input
-                    className={inputBox}
-                    value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
-                  />
-                </label>
+                <Input
+                  label="Last name"
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                />
               </div>
 
-              <label>
-                <span className={labelText}>Username</span>
-                <input
-                  className={inputBox}
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                />
-              </label>
+              <Input
+                label="Username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+              />
 
-              <label>
-                <span className={labelText}>Email</span>
-                <input
-                  className={inputBox}
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </label>
+              <Input
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
 
-              <label>
-                <span className={labelText}>Phone</span>
-                <input
-                  className={inputBox}
-                  placeholder="01711110001"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                />
-              </label>
+              <Input
+                label="Phone"
+                placeholder="01711110001"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+              />
 
               {/* type="password" hides the letters as you type them. */}
-              <label>
-                <span className={labelText}>Password</span>
-                <input
-                  className={inputBox}
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-              </label>
+              <Input
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
             </div>
 
-            <button
-              type="submit"
-              className={blueButton + " mt-4 w-full justify-center"}
-            >
+            {/* className here is added on top of the button's own blue look, so
+                this one is as wide as the card. */}
+            <Button type="submit" className="mt-4 w-full justify-center">
               Create account
-            </button>
+            </Button>
           </form>
         </div>
 

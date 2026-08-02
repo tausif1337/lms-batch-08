@@ -10,19 +10,15 @@
 //   1. Remember things  — useState, for the form boxes
 //   2. Do things        — the small function the button calls
 //   3. Show things      — the HTML that ends up on the screen
+//
+// The boxes and the button come from src/components, the same ones every
+// other page uses.
 // ---------------------------------------------------------------------------
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
-
-// These are just long strings of Tailwind classes, pulled out so the HTML
-// below stays readable. They are plain text, nothing clever.
-const blueButton =
-  "inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700";
-const inputBox =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500";
-const labelText = "mb-1 block text-sm font-medium text-slate-700";
+import { Button, Input } from "../components/index.js";
 
 export default function Login() {
   // =========================================================================
@@ -66,35 +62,29 @@ export default function Login() {
         <form onSubmit={handleSubmit}>
           {/* space-y-4 puts a gap between the two boxes below. */}
           <div className="space-y-4">
-            {/* Each box is a <label> wrapped around an <input>, so clicking
-                the words puts the cursor in the box. */}
-            <label>
-              <span className={labelText}>Phone number</span>
-              <input
-                className={inputBox}
-                placeholder="01711110001"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-              />
-            </label>
+            {/* Each <Input> is a <label> wrapped around a box, so clicking the
+                words puts the cursor in the box. */}
+            <Input
+              label="Phone number"
+              placeholder="01711110001"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+            />
 
-            <label>
-              <span className={labelText}>Password</span>
-              <input
-                className={inputBox}
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </label>
+            {/* type="password" hides the letters as you type them. */}
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
           </div>
 
-          <button
-            type="submit"
-            className={blueButton + " mt-4 w-full justify-center"}
-          >
+          {/* className here is added on top of the button's own blue look, so
+              this one is as wide as the card. */}
+          <Button type="submit" className="mt-4 w-full justify-center">
             Log in
-          </button>
+          </Button>
         </form>
 
         {/* A <Link> moves to another page without reloading the browser. */}

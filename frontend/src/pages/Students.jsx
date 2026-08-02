@@ -9,6 +9,9 @@
 //   2. Do things        — small functions the buttons call
 //   3. Show things      — the HTML that ends up on the screen
 //
+// The buttons and the boxes come from src/components, so every page uses the
+// same ones.
+//
 // One important thing: nothing you type is ever saved. This project has no
 // server and no database. Clicking "Save" only closes the form. The list you
 // see comes from src/data.js and never changes.
@@ -17,16 +20,13 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { students } from "../data.js";
-
-// These are just long strings of Tailwind classes, pulled out so the HTML
-// below stays readable. They are plain text, nothing clever.
-const blueButton =
-  "inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700";
-const greyButton =
-  "rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50";
-const inputBox =
-  "w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500";
-const labelText = "mb-1 block text-sm font-medium text-slate-700";
+import {
+  Button,
+  Checkbox,
+  IconButton,
+  Input,
+  PageHeader,
+} from "../components/index.js";
 
 export default function Students() {
   // =========================================================================
@@ -93,10 +93,7 @@ export default function Students() {
   return (
     <div>
       {/* ---- the title at the top of the page ---- */}
-      <h1 className="text-2xl font-semibold text-slate-900">Students</h1>
-      <p className="mt-1 mb-6 text-sm text-slate-500">
-        Everyone enrolled in the school.
-      </p>
+      <PageHeader title="Students" subtitle="Everyone enrolled in the school." />
 
       {/* ---- the form ----
           The && below means: only show this form when formIsOpen is true. */}
@@ -109,74 +106,55 @@ export default function Students() {
             <h2 className="text-sm font-semibold text-slate-800">
               {editingId === 0 ? "New student" : "Edit student"}
             </h2>
-            <button type="button" onClick={closeForm}>
-              <X size={16} className="text-slate-500" />
-            </button>
+            <IconButton onClick={closeForm}>
+              <X size={16} />
+            </IconButton>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {/* Each box is a <label> wrapped around an <input>, so clicking
-                the words puts the cursor in the box. */}
-            <label>
-              <span className={labelText}>Name</span>
-              <input
-                className={inputBox}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </label>
+            <Input
+              label="Name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
 
-            <label>
-              <span className={labelText}>Email</span>
-              <input
-                className={inputBox}
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </label>
+            <Input
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
 
-            <label>
-              <span className={labelText}>Roll number</span>
-              <input
-                className={inputBox}
-                value={rollNumber}
-                onChange={(event) => setRollNumber(event.target.value)}
-              />
-            </label>
+            <Input
+              label="Roll number"
+              value={rollNumber}
+              onChange={(event) => setRollNumber(event.target.value)}
+            />
 
-            {/* An <input type="date"> shows a little calendar picker, but the
-                value it gives back is text shaped like 2026-01-12. */}
-            <label>
-              <span className={labelText}>Enrollment date</span>
-              <input
-                className={inputBox}
-                type="date"
-                value={enrollmentDate}
-                onChange={(event) => setEnrollmentDate(event.target.value)}
-              />
-            </label>
+            {/* type="date" shows a little calendar picker, but the value it
+                gives back is text shaped like 2026-01-12. */}
+            <Input
+              label="Enrollment date"
+              type="date"
+              value={enrollmentDate}
+              onChange={(event) => setEnrollmentDate(event.target.value)}
+            />
           </div>
 
           {/* A tickbox uses `checked` instead of `value`, and reads
               event.target.checked instead of event.target.value. */}
-          <label className="mt-4 flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={isActive}
-              onChange={(event) => setIsActive(event.target.checked)}
-            />
-            Active
-          </label>
+          <Checkbox
+            label="Active"
+            className="mt-4"
+            checked={isActive}
+            onChange={(event) => setIsActive(event.target.checked)}
+          />
 
           <div className="mt-4 flex gap-2">
-            <button type="submit" className={blueButton}>
-              Save
-            </button>
-            <button type="button" onClick={closeForm} className={greyButton}>
+            <Button type="submit">Save</Button>
+            <Button variant="secondary" onClick={closeForm}>
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -187,10 +165,10 @@ export default function Students() {
           <h2 className="text-sm font-semibold text-slate-800">
             {students.length} students
           </h2>
-          <button onClick={openEmptyForm} className={blueButton}>
+          <Button onClick={openEmptyForm}>
             <Plus size={14} />
             Add student
-          </button>
+          </Button>
         </div>
 
         <div className="overflow-x-auto p-4">
@@ -229,18 +207,15 @@ export default function Students() {
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1">
-                      <button
-                        onClick={() => openFormForEditing(student)}
-                        className="rounded-md p-2 text-slate-600 hover:bg-slate-100"
-                      >
+                      <IconButton onClick={() => openFormForEditing(student)}>
                         <Pencil size={14} />
-                      </button>
+                      </IconButton>
 
                       {/* This button does nothing. There is nothing to delete
                           from, because the list is a fixed list in data.js. */}
-                      <button className="rounded-md p-2 text-red-600 hover:bg-red-50">
+                      <IconButton variant="danger">
                         <Trash2 size={14} />
-                      </button>
+                      </IconButton>
                     </div>
                   </td>
                 </tr>
