@@ -19,3 +19,4 @@ env/
 .vscode/
 .idea/
 .DS_Store
+frontend-ui/node_modules/
