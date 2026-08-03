@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth.js";
+import { ADMIN, roleLabel } from "./permissions.js";
 import {
   BookOpen,
   ClipboardList,
@@ -9,6 +10,7 @@ import {
   LogOut,
   Send,
   Trophy,
+  UserPlus,
   UserRound,
   Users,
 } from "lucide-react";
@@ -31,12 +33,24 @@ const menu = [
   },
   { address: "/submissions", text: "Submissions", icon: <Send size={16} /> },
   { address: "/results", text: "Results", icon: <Trophy size={16} /> },
+  // `onlyFor` keeps a link out of the sidebar for other roles. The route and
+  // the API check the role again; this is only about not offering it.
+  {
+    address: "/accounts",
+    text: "Accounts",
+    icon: <UserPlus size={16} />,
+    onlyFor: ADMIN,
+  },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logOut } = useAuth();
+
+  const visibleMenu = menu.filter(
+    (item) => !item.onlyFor || item.onlyFor === user?.role,
+  );
 
   function handleLogOut() {
     logOut();
@@ -52,7 +66,7 @@ export default function Sidebar() {
         </div>
 
         <div className="flex-1 p-3">
-          {menu.map((item) => {
+          {visibleMenu.map((item) => {
             const isTheCurrentPage = location.pathname === item.address;
 
             let colours = "text-slate-600 hover:bg-slate-100";
@@ -79,7 +93,10 @@ export default function Sidebar() {
         <div className="border-t border-slate-200 p-3">
           <div className="mb-2 flex items-center gap-2 px-2 text-sm text-slate-600">
             <UserRound size={16} />
-            {user?.username ?? "Signed in"}
+            <span className="truncate">{user?.username ?? "Signed in"}</span>
+            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+              {roleLabel(user?.role)}
+            </span>
           </div>
 
           <button

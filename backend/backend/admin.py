@@ -15,7 +15,11 @@ from .models import (
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'phone']
+    # `role` is editable straight from the list, because promoting someone who
+    # has just registered is the one admin job this app really needs.
+    list_display = ['user', 'phone', 'role']
+    list_editable = ['role']
+    list_filter = ['role']
     search_fields = ['user__username', 'phone']
 
 

@@ -6,7 +6,9 @@ import {
   studentsApi,
   submissionsApi,
 } from "../api.js";
+import { useAuth } from "../auth.js";
 import { useFlash } from "../flash.js";
+import { canCreate, canWrite } from "../permissions.js";
 import {
   Alert,
   Button,
@@ -37,6 +39,12 @@ export default function Results() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useFlash();
+
+  // The server enforces this too. Hiding the buttons just keeps the page
+  // honest about what will actually work.
+  const { user } = useAuth();
+  const mayCreate = canCreate(user?.role, "results");
+  const mayEdit = canWrite(user?.role, "results");
   const [isSaving, setIsSaving] = useState(false);
 
   const [resultToDelete, setResultToDelete] = useState(null);
@@ -259,10 +267,12 @@ export default function Results() {
           <h2 className="text-sm font-semibold text-slate-800">
             {isLoading ? "Loading..." : `${results.length} results`}
           </h2>
-          <Button onClick={openEmptyForm}>
-            <Plus size={14} />
-            Add result
-          </Button>
+          {mayCreate && (
+            <Button onClick={openEmptyForm}>
+              <Plus size={14} />
+              Add result
+            </Button>
+          )}
         </div>
 
         <Table columns={["ID", "Submission", "Score", "Feedback", "Action"]}>
@@ -281,16 +291,26 @@ export default function Results() {
               </td>
               <td className="px-3 py-2">
                 <div className="flex gap-1">
-                  <IconButton onClick={() => openFormForEditing(result)}>
-                    <Pencil size={14} />
-                  </IconButton>
+                  {mayEdit ? (
+                    <>
+                      <IconButton
+                        onClick={() => openFormForEditing(result)}
+                        aria-label="Edit"
+                      >
+                        <Pencil size={14} />
+                      </IconButton>
 
-                  <IconButton
-                    variant="danger"
-                    onClick={() => askToDelete(result)}
-                  >
-                    <Trash2 size={14} />
-                  </IconButton>
+                      <IconButton
+                        variant="danger"
+                        onClick={() => askToDelete(result)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </IconButton>
+                    </>
+                  ) : (
+                    <span className="px-2 text-slate-400">&mdash;</span>
+                  )}
                 </div>
               </td>
             </tr>

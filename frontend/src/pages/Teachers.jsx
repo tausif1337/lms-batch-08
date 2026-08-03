@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { teachersApi } from "../api.js";
+import { useAuth } from "../auth.js";
 import { useFlash } from "../flash.js";
+import { canCreate, canWrite } from "../permissions.js";
 import {
   Alert,
   Button,
@@ -25,6 +27,12 @@ export default function Teachers() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useFlash();
+
+  // The server enforces this too. Hiding the buttons just keeps the page
+  // honest about what will actually work.
+  const { user } = useAuth();
+  const mayCreate = canCreate(user?.role, "teacher");
+  const mayEdit = canWrite(user?.role, "teacher");
   const [isSaving, setIsSaving] = useState(false);
 
   // The row waiting on the confirm dialog, or null when it is closed.
@@ -196,10 +204,12 @@ export default function Teachers() {
           <h2 className="text-sm font-semibold text-slate-800">
             {isLoading ? "Loading..." : `${teachers.length} teachers`}
           </h2>
-          <Button onClick={openEmptyForm}>
-            <Plus size={14} />
-            Add teacher
-          </Button>
+          {mayCreate && (
+            <Button onClick={openEmptyForm}>
+              <Plus size={14} />
+              Add teacher
+            </Button>
+          )}
         </div>
 
         <Table columns={["ID", "Name", "Email", "Subject", "Active", "Action"]}>
@@ -217,16 +227,26 @@ export default function Teachers() {
               </td>
               <td className="px-3 py-2">
                 <div className="flex gap-1">
-                  <IconButton onClick={() => openFormForEditing(teacher)}>
-                    <Pencil size={14} />
-                  </IconButton>
+                  {mayEdit ? (
+                    <>
+                      <IconButton
+                        onClick={() => openFormForEditing(teacher)}
+                        aria-label="Edit"
+                      >
+                        <Pencil size={14} />
+                      </IconButton>
 
-                  <IconButton
-                    variant="danger"
-                    onClick={() => askToDelete(teacher)}
-                  >
-                    <Trash2 size={14} />
-                  </IconButton>
+                      <IconButton
+                        variant="danger"
+                        onClick={() => askToDelete(teacher)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </IconButton>
+                    </>
+                  ) : (
+                    <span className="px-2 text-slate-400">&mdash;</span>
+                  )}
                 </div>
               </td>
             </tr>

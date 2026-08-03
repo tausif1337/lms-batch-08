@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import Sidebar from "./Sidebar.jsx";
 import { ProtectedRoute } from "./components/index.js";
 
@@ -12,14 +12,17 @@ import Assignments from "./pages/Assignments.jsx";
 import Submissions from "./pages/Submissions.jsx";
 import Results from "./pages/Results.jsx";
 import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
+import Accounts from "./pages/Accounts.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+
+      {/* /register used to be a public page. There is no public sign-up any
+          more: an admin creates accounts at /accounts, inside the app. */}
+      <Route path="/register" element={<Navigate to="/login" replace />} />
 
       {/* Every page inside the sidebar needs a token. Without one,
           ProtectedRoute sends you to /login. */}
@@ -39,6 +42,16 @@ export default function App() {
         <Route path="/assignments" element={<Assignments />} />
         <Route path="/submissions" element={<Submissions />} />
         <Route path="/results" element={<Results />} />
+
+        {/* Admins only, and the API refuses everyone else regardless. */}
+        <Route
+          path="/accounts"
+          element={
+            <ProtectedRoute role="admin">
+              <Accounts />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       <Route path="*" element={<NotFound />} />

@@ -68,7 +68,14 @@ CORS_ALLOWED_ORIGINS = [
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    )
+    ),
+    # Without this, DRF's default is AllowAny, so any view added without its
+    # own permission_classes would be public. Failing closed means a new view
+    # is locked until somebody decides otherwise; the two views that really
+    # are public (register, login) say so with AllowAny.
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
 }
 
 # The library default access token lifetime is 5 minutes, which forces a

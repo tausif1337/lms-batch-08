@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { AuthContext } from "./auth.js";
 import {
   clearSession,
+  fetchProfile,
   getSavedUser,
   getToken,
   login as loginRequest,
-  register as registerRequest,
   saveSession,
 } from "./api.js";
 
@@ -28,22 +28,52 @@ export function AuthProvider({ children }) {
       window.removeEventListener("lms:unauthorised", handleUnauthorised);
   }, []);
 
+  // A session saved before roles existed has no role on it. Rather than treat
+  // that account as having no permissions, ask /profile/ what it is.
+  useEffect(() => {
+    if (!isLoggedIn || user?.role) {
+      return;
+    }
+
+    let stillMounted = true;
+
+    async function fillInTheRole() {
+      try {
+        const data = await fetchProfile();
+        if (!stillMounted) {
+          return;
+        }
+        const nextUser = {
+          id: data.user.user_id,
+          username: data.user.username,
+          role: data.user.role,
+        };
+        saveSession(getToken(), nextUser);
+        setUser(nextUser);
+      } catch {
+        // A dead token is already handled by api.js; nothing to add here.
+      }
+    }
+
+    fillInTheRole();
+    return () => {
+      stillMounted = false;
+    };
+  }, [isLoggedIn, user?.role]);
+
   async function logIn(phone, password) {
     const data = await loginRequest(phone, password);
 
     // The tokens are nested. data.access does not exist.
-    const nextUser = { id: data.user_id, username: data.username };
+    const nextUser = {
+      id: data.user_id,
+      username: data.username,
+      role: data.role,
+    };
     saveSession(data.tokens.access, nextUser);
 
     setUser(nextUser);
     setIsLoggedIn(true);
-  }
-
-  // Registering does not hand back a token, so log in straight afterwards
-  // with the phone number that was just typed.
-  async function signUp(details) {
-    await registerRequest(details);
-    await logIn(details.phone, details.password);
   }
 
   // There is no logout endpoint. Discarding the token is all the frontend
@@ -55,7 +85,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn, logIn, signUp, logOut }}>
+    <AuthContext.Provider value={{ user, isLoggedIn, logIn, logOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -71,14 +71,9 @@ export default function Login() {
           </Button>
         </form>
 
+        {/* There is no sign-up link. Accounts are handed out by an admin. */}
         <p className="mt-4 text-center text-sm text-slate-500">
-          No account?{" "}
-          <Link
-            to="/register"
-            className="font-medium text-indigo-600 hover:underline"
-          >
-            Register
-          </Link>
+          No account? Ask an admin to make you one.
         </p>
       </div>
     </div>

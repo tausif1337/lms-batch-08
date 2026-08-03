@@ -10,6 +10,7 @@ from django.contrib.auth.tokens import default_token_generator
 from .serializers import (AssignmentSerializer, CourseSerializer, EnrollmentSerializer, LessonSerializer, RegisterSerializer, LoginSerializer, ResultSerializer, StudentSerializer, SubmissionSerializer, TeacherSerializer)
 
 from .models import (Assignment, Course, Enrollment, Lesson, Profile, Results, Student, Submission, Teacher)
+from .permissions import AdminWrites, IsAdmin, SubmissionWrites, TeachingStaffWrites, role_of
 from .serializers import (
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
@@ -102,10 +103,19 @@ class PasswordResetConfirmView(APIView):
 # Create your views here.
 
 class RegisterView(generics.CreateAPIView):
-    """User registration view."""
+    """Create an account. Admins only.
+
+    There is no public sign-up: a student does not make their own account, an
+    admin makes it for them and picks the role. Anonymous callers get a 401,
+    signed-in teachers and students a 403.
+
+    If there is no admin left to do this, `python manage.py createsuperuser`
+    still works, and a superuser counts as an admin.
+    """
 
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
+    permission_classes = [IsAdmin]
 
 
 def get_tokens_for_user(user):
@@ -118,6 +128,8 @@ def get_tokens_for_user(user):
 
 class LoginView(APIView):
     """Login view using phone and password."""
+
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -139,6 +151,9 @@ class LoginView(APIView):
             'message': 'Login successful',
             'user_id': user.id,
             'username': user.username,
+            # The frontend uses this to decide which buttons to show. It is
+            # not what enforces anything: the permission classes do that.
+            'role': role_of(user),
             'tokens': tokens
         })
 
@@ -153,7 +168,8 @@ class ProtectedView(APIView):
             'username': user.username,
             'email': user.email,
             'first_name': user.first_name,
-            'last_name': user.last_name
+            'last_name': user.last_name,
+            'role': role_of(user),
         }
         return Response({
             'message': 'successfully fetched this user',
@@ -163,89 +179,89 @@ class ProtectedView(APIView):
 class TeacherListCreateView(generics.ListCreateAPIView):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AdminWrites]
 
 class TeacherRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AdminWrites]
 
 class StudentListCreateView(generics.ListCreateAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AdminWrites]
 
 class StudentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AdminWrites]
 
 class CourseListCreateView(generics.ListCreateAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class CourseRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class EnrollmentListCreateView(generics.ListCreateAPIView):
     """View to list and create enrollments."""
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class EnrollmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete an enrollment."""
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class LessonListCreateView(generics.ListCreateAPIView):
     """View to list and create lessons."""
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class LessonRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete a lesson."""
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class AssignmentListCreateView(generics.ListCreateAPIView):
     """View to list and create assignments."""
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class AssignmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete an assignment."""
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class SubmissionListCreateView(generics.ListCreateAPIView):
     """View to list and create submissions."""
     queryset = Submission.objects.all()
     serializer_class = SubmissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [SubmissionWrites]
 
 class SubmissionRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete a submission."""
     queryset = Submission.objects.all()
     serializer_class = SubmissionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [SubmissionWrites]
 
 class ResultsListCreateView(generics.ListCreateAPIView):
     """View to list and create results."""
     queryset = Results.objects.all()
     serializer_class = ResultSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]
 
 class ResultsRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete a result."""
     queryset = Results.objects.all()
     serializer_class = ResultSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [TeachingStaffWrites]

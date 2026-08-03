@@ -62,7 +62,38 @@ The frontend talks to `http://127.0.0.1:8000/api` by default. Set `VITE_API_URL`
 
 **You log in with a phone number, not a username and not an email.** That is how the backend is built: it looks you up through `Profile.phone`.
 
-Register a new account at http://localhost:5180/register. Registering does not hand back a token, so the app immediately logs you in behind the scenes using the phone number you just typed.
+**There is no public sign-up.** An admin creates accounts on the **Accounts** page at http://localhost:5180/accounts, picking the role as they go. `/api/register/` returns 401 to anonymous callers and 403 to a signed-in teacher or student, so the old trick of posting to it directly does not work either. Visiting `/register` now just redirects to the login page.
+
+If you have no admin to start from — a fresh database, say — `python manage.py createsuperuser` still works and a superuser counts as an admin. Log in with that account and make the others from the Accounts page.
+
+---
+
+## Roles
+
+Every account carries a role on its `Profile`: **admin**, **teacher** or **student**.
+
+The admin who creates an account chooses its role; leaving the field out makes a student. To change someone's role later, open http://127.0.0.1:8000/admin/backend/profile/, change it in the list, and save. Accounts that existed before roles were added were all made admins by migration `0004`, so nobody was locked out.
+
+| | accounts | teacher & student records | course, lesson, assignment | enrollment | submission | results |
+|---|---|---|---|---|---|---|
+| **admin** | create | full | full | full | full | full |
+| **teacher** | — | read | full | full | full | full |
+| **student** | — | read | read | read | read + may hand in | read |
+
+Reading any list needs only a valid token. Writing is checked by the permission classes in `backend/permissions.py`; a refusal comes back as a 403 with a sentence saying why, and the frontend shows that sentence in the red banner.
+
+The frontend hides the buttons a role cannot use — `frontend/src/permissions.js` holds the same table — but that is only so the page does not offer things that will fail. **The API is what enforces it.** A hand-written `fetch` from the browser console is refused exactly the same way.
+
+### What roles cannot do here
+
+`Teacher` and `Student` rows are still not linked to login accounts. So the server cannot tell whose work a submission is, which means:
+
+- a student can hand in work under any student's name, and
+- "only show me my own courses / my own grades" is not possible.
+
+That needs a foreign key from `Teacher` and `Student` to `User`, which is a bigger change than adding the role field was. A student is deliberately blocked from editing or deleting submissions for this reason — without ownership, "edit your own" cannot be told apart from "edit anyone's".
+
+The superuser from `createsuperuser` has no `Profile` row; `role_of()` treats any superuser as an admin. Any other account without a Profile is treated as a student.
 
 ---
 
@@ -73,6 +104,7 @@ frontend/src/
   api.js              every call to the backend, in one file
   auth.js             the auth context and the useAuth() hook
   AuthContext.jsx     AuthProvider: who is logged in
+  permissions.js      which buttons a role is worth showing
   flash.js            useFlash(): a "Saved" line that clears itself
   App.jsx             the list of URLs
   Sidebar.jsx         sidebar + content frame
@@ -82,7 +114,7 @@ frontend/src/
     Div.jsx  IconButton.jsx  Input.jsx  PageHeader.jsx
     ProtectedRoute.jsx  Select.jsx  Table.jsx  Textarea.jsx
   pages/
-    Login.jsx  Register.jsx  Dashboard.jsx  NotFound.jsx
+    Login.jsx  Accounts.jsx  Dashboard.jsx  NotFound.jsx
     Students.jsx      <-- read this one first
     Teachers.jsx  Courses.jsx  Enrollments.jsx
     Lessons.jsx   Assignments.jsx
@@ -133,8 +165,7 @@ These are real quirks of the API, not bugs in the frontend. Each one is commente
 | **No token refresh endpoint** | The access token cannot be renewed. When it expires the app clears the session and sends you back to `/login`. `SIMPLE_JWT.ACCESS_TOKEN_LIFETIME` is set to 8 hours so this does not happen mid-session while you are learning. |
 | **No logout endpoint** | Logging out just discards the saved token. The token stays valid on the server until it expires. |
 | `Results.submission` is one-to-one | A submission can only be graded once. A second attempt returns a 400; the Results page turns it into a readable message. |
-| **No roles** | There is no teacher/student distinction on the account, and `Teacher`/`Student` rows are not linked to login accounts at all. So there is no per-role UI, and "my courses" is not possible without a backend model change. |
-| **Everyone can edit everything** | Every endpoint only checks that you are logged in. Any account can delete any record. Fine for learning, not for production. |
+| **Records are not accounts** | `Teacher`/`Student` rows are not linked to login accounts, so "my courses" and "my grades" are not possible without a model change. Roles exist (see above), ownership does not. |
 
 ---
 
@@ -144,7 +175,7 @@ Base URL: `http://127.0.0.1:8000/api`
 
 | Path | Methods | Auth |
 |---|---|---|
-| `/register/` | POST | No |
+| `/register/` | POST | **Admin only** |
 | `/login/` | POST | No |
 | `/profile/` | GET | Yes |
 | `/password-reset/` | POST | No |

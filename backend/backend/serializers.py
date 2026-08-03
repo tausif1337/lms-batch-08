@@ -17,10 +17,17 @@ class RegisterSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(required=True, write_only=True)
     first_name = serializers.CharField(required=True)
     email = serializers.EmailField(required=True)
+    # Only an admin can reach this endpoint, so letting the caller pick the
+    # role is safe. Left out, the account is a student.
+    role = serializers.ChoiceField(
+        choices=Profile.ROLE_CHOICES,
+        required=False,
+        default=Profile.STUDENT,
+    )
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'phone', 'first_name', 'last_name']
+        fields = ['id', 'username', 'email', 'password', 'phone', 'first_name', 'last_name', 'role']
         read_only_fields = ['id']
         extra_kwargs = {'password': {'write_only': True}}
 
@@ -29,10 +36,21 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("This phone number is already registered.")
         return value
 
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("That username is already taken.")
+        return value
+
+    def validate_password(self, value):
+        # Run Django's own password rules, the same ones the reset flow uses.
+        validate_password(value)
+        return value
+
     @transaction.atomic
     def create(self, validated_data):
         phone = validated_data.pop('phone')
         email = validated_data.pop('email')
+        role = validated_data.pop('role', Profile.STUDENT)
         first_name = validated_data.pop('first_name', '')
         last_name = validated_data.pop('last_name', '')
 
@@ -43,8 +61,13 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=first_name,
             last_name=last_name,
         )
-        Profile.objects.create(user=user, phone=phone)
+        Profile.objects.create(user=user, phone=phone, role=role)
         return user
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['role'] = instance.profile.role
+        return data
 
 
 class LoginSerializer(serializers.Serializer):

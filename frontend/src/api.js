@@ -134,13 +134,12 @@ export function login(phone, password) {
   });
 }
 
-// Registering does not return a token, so the caller logs in straight
-// afterwards with the phone number that was just used.
+// Creating an account is an admin job, so this call carries the admin's own
+// token. There is no public sign-up.
 export function register(details) {
   return request("/register/", {
     method: "POST",
     body: JSON.stringify(details),
-    auth: false,
   });
 }
 
