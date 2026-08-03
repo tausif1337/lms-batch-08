@@ -64,7 +64,15 @@ The frontend talks to `http://127.0.0.1:8000/api` by default. Set `VITE_API_URL`
 
 **There is no public sign-up.** An admin creates accounts on the **Accounts** page at http://localhost:5180/accounts, picking the role as they go. `/api/register/` returns 401 to anonymous callers and 403 to a signed-in teacher or student, so the old trick of posting to it directly does not work either. Visiting `/register` now just redirects to the login page.
 
-If you have no admin to start from — a fresh database, say — `python manage.py createsuperuser` still works and a superuser counts as an admin. Log in with that account and make the others from the Accounts page.
+### Starting from an empty database
+
+`createsuperuser` alone is **not** enough to get into the app. Login looks you up by `Profile.phone`, and `createsuperuser` does not make a Profile, so that account can reach `/admin/` and nothing else. Three steps:
+
+1. `python manage.py createsuperuser`
+2. Open http://127.0.0.1:8000/admin/backend/profile/add/, pick that user, give it a phone number, set the role to **Admin**, save.
+3. Log in at http://localhost:5180/login with that phone number. The Accounts page is now available for everyone else.
+
+(A superuser *is* treated as an admin by `role_of()` — the missing piece is only the phone number to log in with.)
 
 ---
 
