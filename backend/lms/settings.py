@@ -56,7 +56,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# The Vite dev server runs on 5180 (see frontend/vite.config.js). 5173 is kept
+# here because that is Vite's own default and the port the README used to name.
 CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5180',
+    'http://127.0.0.1:5180',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
 ]
@@ -158,5 +162,11 @@ EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "False") == "True"
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# The existing migrations were generated on Django 6, where BigAutoField is the
+# default primary key. Django 5.2 falls back to AutoField unless this is set,
+# which makes `makemigrations` want to rewrite every primary key even though the
+# database columns are already bigint.
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 

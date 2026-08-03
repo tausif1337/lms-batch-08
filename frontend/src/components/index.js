@@ -1,7 +1,11 @@
+export { default as Alert } from "./Alert.jsx";
 export { default as Button } from "./Button.jsx";
 export { default as Checkbox } from "./Checkbox.jsx";
+export { default as Div } from "./Div.jsx";
 export { default as IconButton } from "./IconButton.jsx";
 export { default as Input } from "./Input.jsx";
 export { default as PageHeader } from "./PageHeader.jsx";
+export { default as ProtectedRoute } from "./ProtectedRoute.jsx";
 export { default as Select } from "./Select.jsx";
+export { default as Table } from "./Table.jsx";
 export { default as Textarea } from "./Textarea.jsx";

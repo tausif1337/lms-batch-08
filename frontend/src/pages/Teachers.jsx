@@ -1,16 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { teachers } from "../data.js";
+import { teachersApi } from "../api.js";
 import {
+  Alert,
   Button,
   Checkbox,
   IconButton,
   Input,
   PageHeader,
+  Table,
 } from "../components/index.js";
 
-
+// Every resource page follows the same six steps:
+//   1. state for the rows, the form, and the errors
+//   2. useEffect()     reads the list from the API when the page opens
+//   3. reload()        re-runs that effect after a save or a delete
+//   4. handleSave()    creates a new row, or updates the one being edited
+//   5. handleDelete()  confirms, then deletes
+//   6. the JSX: error banner, form, table
 export default function Teachers() {
+  const [teachers, setTeachers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
@@ -18,6 +31,30 @@ export default function Teachers() {
 
   const [formIsOpen, setFormIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(0);
+
+  // Bumping this re-runs the effect below. Saving and deleting call reload()
+  // so the table shows what the server now holds.
+  const [reloadCount, setReloadCount] = useState(0);
+
+  function reload() {
+    setReloadCount((count) => count + 1);
+  }
+
+  useEffect(() => {
+    async function load() {
+      try {
+        // The list endpoint is not paginated, so this is a plain array.
+        setTeachers(await teachersApi.list());
+        setError("");
+      } catch (problem) {
+        setError(problem.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    load();
+  }, [reloadCount]);
 
   function openEmptyForm() {
     setName("");
@@ -29,9 +66,9 @@ export default function Teachers() {
   }
 
   function openFormForEditing(teacher) {
-    setName(teacher.name);
-    setEmail(teacher.email);
-    setSubject(teacher.subject);
+    setName(teacher.name ?? "");
+    setEmail(teacher.email ?? "");
+    setSubject(teacher.subject ?? "");
     setIsActive(teacher.is_active);
     setEditingId(teacher.id);
     setFormIsOpen(true);
@@ -41,14 +78,51 @@ export default function Teachers() {
     setFormIsOpen(false);
   }
 
-  function handleSave(event) {
+  async function handleSave(event) {
     event.preventDefault();
-    closeForm();
+    setIsSaving(true);
+
+    const values = { name, email, subject, is_active: isActive };
+
+    try {
+      if (editingId === 0) {
+        await teachersApi.create(values);
+      } else {
+        await teachersApi.update(editingId, values);
+      }
+      setError("");
+      closeForm();
+      reload();
+    } catch (problem) {
+      setError(problem.message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(teacher) {
+    // Deleting a teacher cascades to their courses, so say so.
+    const ok = window.confirm(
+      `Delete ${teacher.name || "this teacher"}? Their courses go too.`,
+    );
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await teachersApi.remove(teacher.id);
+      setError("");
+      reload();
+    } catch (problem) {
+      setError(problem.message);
+    }
   }
 
   return (
     <div>
       <PageHeader title="Teachers" subtitle="The people who teach courses." />
+
+      <Alert>{error}</Alert>
 
       {formIsOpen && (
         <form
@@ -80,6 +154,7 @@ export default function Teachers() {
 
             <Input
               label="Subject"
+              required
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
             />
@@ -93,7 +168,9 @@ export default function Teachers() {
           />
 
           <div className="mt-4 flex gap-2">
-            <Button type="submit">Save</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
             <Button variant="secondary" onClick={closeForm}>
               Cancel
             </Button>
@@ -104,7 +181,7 @@ export default function Teachers() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {teachers.length} teachers
+            {isLoading ? "Loading..." : `${teachers.length} teachers`}
           </h2>
           <Button onClick={openEmptyForm}>
             <Plus size={14} />
@@ -112,50 +189,36 @@ export default function Teachers() {
           </Button>
         </div>
 
-        <div className="overflow-x-auto p-4">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">Name</th>
-                <th className="px-3 py-2 font-medium">Email</th>
-                <th className="px-3 py-2 font-medium">Subject</th>
-                <th className="px-3 py-2 font-medium">Active</th>
-                <th className="px-3 py-2 font-medium">Action</th>
-              </tr>
-            </thead>
+        <Table columns={["ID", "Name", "Email", "Subject", "Active", "Action"]}>
+          {teachers.map((teacher) => (
+            <tr
+              key={teacher.id}
+              className="border-b border-slate-100 hover:bg-slate-50"
+            >
+              <td className="px-3 py-2 text-slate-700">{teacher.id}</td>
+              <td className="px-3 py-2 text-slate-700">{teacher.name}</td>
+              <td className="px-3 py-2 text-slate-700">{teacher.email}</td>
+              <td className="px-3 py-2 text-slate-700">{teacher.subject}</td>
+              <td className="px-3 py-2 text-slate-700">
+                {teacher.is_active ? "Yes" : "No"}
+              </td>
+              <td className="px-3 py-2">
+                <div className="flex gap-1">
+                  <IconButton onClick={() => openFormForEditing(teacher)}>
+                    <Pencil size={14} />
+                  </IconButton>
 
-            <tbody>
-              {teachers.map((teacher) => (
-                <tr
-                  key={teacher.id}
-                  className="border-b border-slate-100 hover:bg-slate-50"
-                >
-                  <td className="px-3 py-2 text-slate-700">{teacher.id}</td>
-                  <td className="px-3 py-2 text-slate-700">{teacher.name}</td>
-                  <td className="px-3 py-2 text-slate-700">{teacher.email}</td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {teacher.subject}
-                  </td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {teacher.is_active ? "Yes" : "No"}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-1">
-                      <IconButton onClick={() => openFormForEditing(teacher)}>
-                        <Pencil size={14} />
-                      </IconButton>
-
-                      <IconButton variant="danger">
-                        <Trash2 size={14} />
-                      </IconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  <IconButton
+                    variant="danger"
+                    onClick={() => handleDelete(teacher)}
+                  >
+                    <Trash2 size={14} />
+                  </IconButton>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </Table>
       </div>
     </div>
   );

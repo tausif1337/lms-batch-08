@@ -1,5 +1,6 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import Sidebar from "./Sidebar.jsx";
+import { ProtectedRoute } from "./components/index.js";
 
 import Dashboard from "./pages/Dashboard.jsx";
 import Teachers from "./pages/Teachers.jsx";
@@ -20,7 +21,15 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      <Route element={<Sidebar />}>
+      {/* Every page inside the sidebar needs a token. Without one,
+          ProtectedRoute sends you to /login. */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <Sidebar />
+          </ProtectedRoute>
+        }
+      >
         <Route path="/" element={<Dashboard />} />
         <Route path="/teachers" element={<Teachers />} />
         <Route path="/students" element={<Students />} />

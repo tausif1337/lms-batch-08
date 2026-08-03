@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
-import { Button, Input } from "../components/index.js";
+import { useAuth } from "../auth.js";
+import { Alert, Button, Input } from "../components/index.js";
 
 export default function Register() {
   const [firstName, setFirstName] = useState("");
@@ -10,12 +11,34 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const navigate = useNavigate();
+  const { signUp } = useAuth();
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    navigate("/");
+    setError("");
+    setIsSaving(true);
+
+    try {
+      // Registering does not return a token, so signUp() logs in straight
+      // afterwards using the phone number typed here.
+      await signUp({
+        username,
+        email,
+        password,
+        phone,
+        first_name: firstName,
+        last_name: lastName,
+      });
+      navigate("/", { replace: true });
+    } catch (problem) {
+      setError(problem.message);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -31,11 +54,14 @@ export default function Register() {
             Create an account
           </h1>
 
+          <Alert>{error}</Alert>
+
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   label="First name"
+                  required
                   value={firstName}
                   onChange={(event) => setFirstName(event.target.value)}
                 />
@@ -49,6 +75,7 @@ export default function Register() {
 
               <Input
                 label="Username"
+                required
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
               />
@@ -56,6 +83,7 @@ export default function Register() {
               <Input
                 label="Email"
                 type="email"
+                required
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
               />
@@ -63,6 +91,7 @@ export default function Register() {
               <Input
                 label="Phone"
                 placeholder="01711110001"
+                required
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
               />
@@ -70,13 +99,18 @@ export default function Register() {
               <Input
                 label="Password"
                 type="password"
+                required
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
             </div>
 
-            <Button type="submit" className="mt-4 w-full justify-center">
-              Create account
+            <Button
+              type="submit"
+              disabled={isSaving}
+              className="mt-4 w-full justify-center disabled:opacity-60"
+            >
+              {isSaving ? "Creating..." : "Create account"}
             </Button>
           </form>
         </div>

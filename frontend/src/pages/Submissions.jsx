@@ -1,35 +1,27 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { assignments, students, submissions } from "../data.js";
+import { assignmentsApi, studentsApi, submissionsApi } from "../api.js";
 import {
+  Alert,
   Button,
   IconButton,
   PageHeader,
   Select,
+  Table,
   Textarea,
 } from "../components/index.js";
 
-function findAssignmentTitle(assignmentId) {
-  const assignment = assignments.find((item) => item.id === assignmentId);
-  if (assignment) {
-    return assignment.title;
-  }
-  return "Unknown";
-}
-
-function findStudentName(studentId) {
-  const student = students.find((item) => item.id === studentId);
-  if (student) {
-    return student.name;
-  }
-  return "Unknown";
-}
-
 function showDateAndTime(text) {
+  if (!text) {
+    return "";
+  }
   return new Date(text).toLocaleString();
 }
 
 function shorten(text) {
+  if (!text) {
+    return "";
+  }
   if (text.length > 60) {
     return text.slice(0, 60) + "...";
   }
@@ -37,12 +29,66 @@ function shorten(text) {
 }
 
 export default function Submissions() {
+  const [submissions, setSubmissions] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
   const [assignmentId, setAssignmentId] = useState("");
   const [studentId, setStudentId] = useState("");
   const [content, setContent] = useState("");
 
   const [formIsOpen, setFormIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(0);
+
+  function findAssignmentTitle(assignmentId) {
+    const assignment = assignments.find((item) => item.id === assignmentId);
+    if (assignment) {
+      return assignment.title;
+    }
+    return "Unknown";
+  }
+
+  function findStudentName(studentId) {
+    const student = students.find((item) => item.id === studentId);
+    if (student) {
+      return student.name;
+    }
+    return "Unknown";
+  }
+
+  // Bumping this re-runs the effect below. Saving and deleting call reload()
+  // so the table shows what the server now holds.
+  const [reloadCount, setReloadCount] = useState(0);
+
+  function reload() {
+    setReloadCount((count) => count + 1);
+  }
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [submissionRows, assignmentRows, studentRows] =
+          await Promise.all([
+            submissionsApi.list(),
+            assignmentsApi.list(),
+            studentsApi.list(),
+          ]);
+        setSubmissions(submissionRows);
+        setAssignments(assignmentRows);
+        setStudents(studentRows);
+        setError("");
+      } catch (problem) {
+        setError(problem.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    load();
+  }, [reloadCount]);
 
   function openEmptyForm() {
     setAssignmentId("");
@@ -53,8 +99,8 @@ export default function Submissions() {
   }
 
   function openFormForEditing(submission) {
-    setAssignmentId(submission.assignment);
-    setStudentId(submission.student);
+    setAssignmentId(String(submission.assignment));
+    setStudentId(String(submission.student));
     setContent(submission.content);
     setEditingId(submission.id);
     setFormIsOpen(true);
@@ -64,14 +110,56 @@ export default function Submissions() {
     setFormIsOpen(false);
   }
 
-  function handleSave(event) {
+  async function handleSave(event) {
     event.preventDefault();
-    closeForm();
+    setIsSaving(true);
+
+    // submitted_at is auto_now_add, so the server sets it and ignores
+    // anything sent for it. It appears in the table but not in the form.
+    const values = {
+      assignment: Number(assignmentId),
+      student: Number(studentId),
+      content,
+    };
+
+    try {
+      if (editingId === 0) {
+        await submissionsApi.create(values);
+      } else {
+        await submissionsApi.update(editingId, values);
+      }
+      setError("");
+      closeForm();
+      reload();
+    } catch (problem) {
+      setError(problem.message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(submission) {
+    const ok = window.confirm(
+      "Delete this submission? Its result goes too.",
+    );
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await submissionsApi.remove(submission.id);
+      setError("");
+      reload();
+    } catch (problem) {
+      setError(problem.message);
+    }
   }
 
   return (
     <div>
       <PageHeader title="Submissions" subtitle="Work handed in by students." />
+
+      <Alert>{error}</Alert>
 
       {formIsOpen && (
         <form
@@ -91,6 +179,7 @@ export default function Submissions() {
             <Select
               label="Assignment"
               placeholder="Choose an assignment..."
+              required
               value={assignmentId}
               onChange={(event) => setAssignmentId(event.target.value)}
             >
@@ -104,6 +193,7 @@ export default function Submissions() {
             <Select
               label="Student"
               placeholder="Choose a student..."
+              required
               value={studentId}
               onChange={(event) => setStudentId(event.target.value)}
             >
@@ -119,12 +209,15 @@ export default function Submissions() {
             label="Content"
             rows={5}
             className="mt-4"
+            required
             value={content}
             onChange={(event) => setContent(event.target.value)}
           />
 
           <div className="mt-4 flex gap-2">
-            <Button type="submit">Save</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
             <Button variant="secondary" onClick={closeForm}>
               Cancel
             </Button>
@@ -135,7 +228,7 @@ export default function Submissions() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {submissions.length} submissions
+            {isLoading ? "Loading..." : `${submissions.length} submissions`}
           </h2>
           <Button onClick={openEmptyForm}>
             <Plus size={14} />
@@ -143,54 +236,51 @@ export default function Submissions() {
           </Button>
         </div>
 
-        <div className="overflow-x-auto p-4">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">Assignment</th>
-                <th className="px-3 py-2 font-medium">Student</th>
-                <th className="px-3 py-2 font-medium">Content</th>
-                <th className="px-3 py-2 font-medium">Submitted</th>
-                <th className="px-3 py-2 font-medium"></th>
-              </tr>
-            </thead>
+        <Table
+          columns={[
+            "ID",
+            "Assignment",
+            "Student",
+            "Content",
+            "Submitted",
+            "Action",
+          ]}
+        >
+          {submissions.map((submission) => (
+            <tr
+              key={submission.id}
+              className="border-b border-slate-100 hover:bg-slate-50"
+            >
+              <td className="px-3 py-2 text-slate-700">{submission.id}</td>
+              <td className="px-3 py-2 text-slate-700">
+                {findAssignmentTitle(submission.assignment)}
+              </td>
+              <td className="px-3 py-2 text-slate-700">
+                {findStudentName(submission.student)}
+              </td>
+              <td className="px-3 py-2 text-slate-700">
+                {shorten(submission.content)}
+              </td>
+              <td className="px-3 py-2 text-slate-700">
+                {showDateAndTime(submission.submitted_at)}
+              </td>
+              <td className="px-3 py-2">
+                <div className="flex gap-1">
+                  <IconButton onClick={() => openFormForEditing(submission)}>
+                    <Pencil size={14} />
+                  </IconButton>
 
-            <tbody>
-              {submissions.map((submission) => (
-                <tr
-                  key={submission.id}
-                  className="border-b border-slate-100 hover:bg-slate-50"
-                >
-                  <td className="px-3 py-2 text-slate-700">{submission.id}</td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {findAssignmentTitle(submission.assignment)}
-                  </td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {findStudentName(submission.student)}
-                  </td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {shorten(submission.content)}
-                  </td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {showDateAndTime(submission.submitted_at)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-1">
-                      <IconButton onClick={() => openFormForEditing(submission)}>
-                        <Pencil size={14} />
-                      </IconButton>
-
-                      <IconButton variant="danger">
-                        <Trash2 size={14} />
-                      </IconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  <IconButton
+                    variant="danger"
+                    onClick={() => handleDelete(submission)}
+                  >
+                    <Trash2 size={14} />
+                  </IconButton>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </Table>
       </div>
     </div>
   );

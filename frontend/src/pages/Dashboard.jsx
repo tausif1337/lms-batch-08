@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BookOpen,
@@ -8,76 +9,108 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
+import { useAuth } from "../auth.js";
 import {
-  assignments,
-  courses,
-  enrollments,
-  lessons,
-  results,
-  students,
-  submissions,
-  teachers,
-} from "../data.js";
-import { PageHeader } from "../components/index.js";
+  assignmentsApi,
+  coursesApi,
+  enrollmentsApi,
+  lessonsApi,
+  resultsApi,
+  studentsApi,
+  submissionsApi,
+  teachersApi,
+} from "../api.js";
+import { Alert, PageHeader } from "../components/index.js";
 
+// One tile per resource. `api` is the module from api.js the count comes from.
 const tiles = [
   {
     address: "/teachers",
     text: "Teachers",
-    count: teachers.length,
+    api: teachersApi,
     icon: <Users size={16} className="text-indigo-500" />,
   },
   {
     address: "/students",
     text: "Students",
-    count: students.length,
+    api: studentsApi,
     icon: <GraduationCap size={16} className="text-indigo-500" />,
   },
   {
     address: "/courses",
     text: "Courses",
-    count: courses.length,
+    api: coursesApi,
     icon: <BookOpen size={16} className="text-indigo-500" />,
   },
   {
     address: "/enrollments",
     text: "Enrollments",
-    count: enrollments.length,
+    api: enrollmentsApi,
     icon: <ClipboardList size={16} className="text-indigo-500" />,
   },
   {
     address: "/lessons",
     text: "Lessons",
-    count: lessons.length,
+    api: lessonsApi,
     icon: <FileText size={16} className="text-indigo-500" />,
   },
   {
     address: "/assignments",
     text: "Assignments",
-    count: assignments.length,
+    api: assignmentsApi,
     icon: <ClipboardList size={16} className="text-indigo-500" />,
   },
   {
     address: "/submissions",
     text: "Submissions",
-    count: submissions.length,
+    api: submissionsApi,
     icon: <Send size={16} className="text-indigo-500" />,
   },
   {
     address: "/results",
     text: "Results",
-    count: results.length,
+    api: resultsApi,
     icon: <Trophy size={16} className="text-indigo-500" />,
   },
 ];
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const [counts, setCounts] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // There is no counts endpoint, so every list is fetched and measured.
+  useEffect(() => {
+    async function load() {
+      try {
+        const lists = await Promise.all(tiles.map((tile) => tile.api.list()));
+
+        const nextCounts = {};
+        tiles.forEach((tile, index) => {
+          nextCounts[tile.text] = lists[index].length;
+        });
+
+        setCounts(nextCounts);
+        setError("");
+      } catch (problem) {
+        setError(problem.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    load();
+  }, []);
+
   return (
     <div>
       <PageHeader
-        title="Welcome back, admin"
+        title={`Welcome back, ${user?.username ?? "there"}`}
         subtitle="A quick count of everything in the system."
       />
+
+      <Alert>{error}</Alert>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
@@ -93,7 +126,7 @@ export default function Dashboard() {
               {tile.icon}
             </div>
             <p className="mt-2 text-3xl font-semibold text-slate-900">
-              {tile.count}
+              {isLoading ? "—" : (counts[tile.text] ?? 0)}
             </p>
           </Link>
         ))}

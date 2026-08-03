@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "./auth.js";
 import {
   BookOpen,
   ClipboardList,
@@ -35,6 +36,12 @@ const menu = [
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logOut } = useAuth();
+
+  function handleLogOut() {
+    logOut();
+    navigate("/login", { replace: true });
+  }
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -72,11 +79,11 @@ export default function Sidebar() {
         <div className="border-t border-slate-200 p-3">
           <div className="mb-2 flex items-center gap-2 px-2 text-sm text-slate-600">
             <UserRound size={16} />
-            admin
+            {user?.username ?? "Signed in"}
           </div>
 
           <button
-            onClick={() => navigate("/login")}
+            onClick={handleLogOut}
             className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
           >
             <LogOut size={16} />

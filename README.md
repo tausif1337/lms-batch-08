@@ -40,6 +40,8 @@ python manage.py runserver
 
 Runs on **http://127.0.0.1:8000**.
 
+If `runserver` dies with `pywatchman.SocketTimeout: timed out waiting for response`, Django's auto-reloader is trying to use Watchman and Watchman is not answering. Start it with `python manage.py runserver --noreload` (you then have to restart it yourself after editing Python files), or raise the timeout with `DJANGO_WATCHMAN_TIMEOUT=20`.
+
 ### 3. Frontend
 
 ```bash
@@ -48,9 +50,11 @@ npm install
 npm run dev
 ```
 
-Runs on **http://localhost:5173**.
+Runs on **http://localhost:5180** (`frontend/vite.config.js` picks that port to stay clear of other projects on 5173–5175).
 
-The port matters. The backend's CORS whitelist contains only 5173, so `vite.config.js` sets `strictPort: true` — if 5173 is busy, Vite will refuse to start rather than quietly move to 5174 and leave every API call failing.
+The port matters. The backend's CORS whitelist in `backend/lms/settings.py` lists 5180 and 5173 only. If Vite reports a different port because 5180 was busy, add that port there too or every API call will be blocked by the browser.
+
+The frontend talks to `http://127.0.0.1:8000/api` by default. Set `VITE_API_URL` to point it somewhere else.
 
 ---
 
@@ -58,7 +62,7 @@ The port matters. The backend's CORS whitelist contains only 5173, so `vite.conf
 
 **You log in with a phone number, not a username and not an email.** That is how the backend is built: it looks you up through `Profile.phone`.
 
-Register a new account at http://localhost:5173/register. Registering does not hand back a token, so the app immediately logs you in behind the scenes using the phone number you just typed.
+Register a new account at http://localhost:5180/register. Registering does not hand back a token, so the app immediately logs you in behind the scenes using the phone number you just typed.
 
 ---
 
@@ -67,32 +71,40 @@ Register a new account at http://localhost:5173/register. Registering does not h
 ```
 frontend/src/
   api.js              every call to the backend, in one file
-  AuthContext.jsx     who is logged in
+  auth.js             the auth context and the useAuth() hook
+  AuthContext.jsx     AuthProvider: who is logged in
   App.jsx             the list of URLs
+  Sidebar.jsx         sidebar + content frame
   components/
-    ui.jsx            Button, Input, Select, Table, Card, Alert, ...
-    Layout.jsx        sidebar + content frame
-    ProtectedRoute.jsx
+    index.js          one import for all of the below
+    Alert.jsx  Button.jsx  Checkbox.jsx  Div.jsx  IconButton.jsx
+    Input.jsx  PageHeader.jsx  ProtectedRoute.jsx
+    Select.jsx  Table.jsx  Textarea.jsx
   pages/
-    LoginPage.jsx  RegisterPage.jsx  DashboardPage.jsx
-    StudentsPage.jsx      <-- read this one first
-    TeachersPage.jsx  CoursesPage.jsx  EnrollmentsPage.jsx
-    LessonsPage.jsx   AssignmentsPage.jsx
-    SubmissionsPage.jsx   ResultsPage.jsx
+    Login.jsx  Register.jsx  Dashboard.jsx  NotFound.jsx
+    Students.jsx      <-- read this one first
+    Teachers.jsx  Courses.jsx  Enrollments.jsx
+    Lessons.jsx   Assignments.jsx
+    Submissions.jsx   Results.jsx
 ```
 
-**Start with `pages/StudentsPage.jsx`.** All eight resource pages are the same six steps, and that file is the one with the comments explaining each of them:
+**Start with `pages/Students.jsx`.** All eight resource pages are the same six steps, and that file is the one with the comments explaining each of them:
 
 1. state for the rows, the form, and the errors
-2. `load()` reads the list from the API
-3. `useEffect()` calls `load()` once when the page opens
-4. `handleSubmit()` creates a new row, or updates the one being edited
+2. `useEffect()` reads the list from the API when the page opens
+3. `reload()` re-runs that effect after a save or a delete
+4. `handleSave()` creates a new row, or updates the one being edited
 5. `handleDelete()` confirms, then deletes
 6. the JSX: error banner, form, table
 
-The repetition across the eight pages is deliberate. Each page stands on its own so you can read one without chasing an abstraction through four other files.
+The repetition across the eight pages is deliberate. Each page stands on its own so you can read one without chasing an abstraction through four other files. The only things shared are the plain UI pieces in `components/` and the network calls in `api.js`.
 
 No Redux, no React Query, no axios — `useState`, `useEffect`, and `fetch`.
+
+Two pages do a little more than the other six:
+
+- **Assignments** narrows the lesson dropdown to the lessons of the chosen course, and converts the `datetime-local` value to UTC on the way out and back to local time on the way in.
+- **Results** leaves out submissions that already have a result, because `Results.submission` is one-to-one.
 
 ---
 

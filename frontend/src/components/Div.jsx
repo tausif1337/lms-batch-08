@@ -1,10 +1,7 @@
-export default function Div(className="", children){
-
-    return(
-        <div className="">
-            {children}
-        </div>
-    )
-
+export default function Div({ className = "", children, ...rest }) {
+  return (
+    <div className={className} {...rest}>
+      {children}
+    </div>
+  );
 }
-    

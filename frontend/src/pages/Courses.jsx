@@ -1,30 +1,69 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { courses, teachers } from "../data.js";
+import { coursesApi, teachersApi } from "../api.js";
 import {
+  Alert,
   Button,
   IconButton,
   Input,
   PageHeader,
   Select,
+  Table,
   Textarea,
 } from "../components/index.js";
 
-function findTeacherName(teacherId) {
-  const teacher = teachers.find((item) => item.id === teacherId);
-  if (teacher) {
-    return teacher.name;
-  }
-  return "Unknown";
-}
-
 export default function Courses() {
+  const [courses, setCourses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
   const [title, setTitle] = useState("");
   const [teacherId, setTeacherId] = useState("");
   const [description, setDescription] = useState("");
 
   const [formIsOpen, setFormIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(0);
+
+  // A course sends {"teacher": 3}, not the teacher's name. There is no way to
+  // ask the API to expand it, so the teacher list is fetched as well and the
+  // two are joined here in JavaScript.
+  function findTeacherName(teacherId) {
+    const teacher = teachers.find((item) => item.id === teacherId);
+    if (teacher) {
+      return teacher.name;
+    }
+    return "Unknown";
+  }
+
+  // Bumping this re-runs the effect below. Saving and deleting call reload()
+  // so the table shows what the server now holds.
+  const [reloadCount, setReloadCount] = useState(0);
+
+  function reload() {
+    setReloadCount((count) => count + 1);
+  }
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [courseRows, teacherRows] = await Promise.all([
+          coursesApi.list(),
+          teachersApi.list(),
+        ]);
+        setCourses(courseRows);
+        setTeachers(teacherRows);
+        setError("");
+      } catch (problem) {
+        setError(problem.message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    load();
+  }, [reloadCount]);
 
   function openEmptyForm() {
     setTitle("");
@@ -36,7 +75,7 @@ export default function Courses() {
 
   function openFormForEditing(course) {
     setTitle(course.title);
-    setTeacherId(course.teacher);
+    setTeacherId(String(course.teacher));
     setDescription(course.description);
     setEditingId(course.id);
     setFormIsOpen(true);
@@ -46,14 +85,51 @@ export default function Courses() {
     setFormIsOpen(false);
   }
 
-  function handleSave(event) {
+  async function handleSave(event) {
     event.preventDefault();
-    closeForm();
+    setIsSaving(true);
+
+    // A <select> always hands back a string. The API wants the integer id.
+    const values = { title, description, teacher: Number(teacherId) };
+
+    try {
+      if (editingId === 0) {
+        await coursesApi.create(values);
+      } else {
+        await coursesApi.update(editingId, values);
+      }
+      setError("");
+      closeForm();
+      reload();
+    } catch (problem) {
+      setError(problem.message);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDelete(course) {
+    const ok = window.confirm(
+      `Delete ${course.title}? Its lessons, assignments and enrollments go too.`,
+    );
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await coursesApi.remove(course.id);
+      setError("");
+      reload();
+    } catch (problem) {
+      setError(problem.message);
+    }
   }
 
   return (
     <div>
       <PageHeader title="Courses" subtitle="Every course, and who teaches it." />
+
+      <Alert>{error}</Alert>
 
       {formIsOpen && (
         <form
@@ -72,6 +148,7 @@ export default function Courses() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Title"
+              required
               value={title}
               onChange={(event) => setTitle(event.target.value)}
             />
@@ -79,6 +156,7 @@ export default function Courses() {
             <Select
               label="Teacher"
               placeholder="Choose a teacher..."
+              required
               value={teacherId}
               onChange={(event) => setTeacherId(event.target.value)}
             >
@@ -93,12 +171,15 @@ export default function Courses() {
           <Textarea
             label="Description"
             className="mt-4"
+            required
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />
 
           <div className="mt-4 flex gap-2">
-            <Button type="submit">Save</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
             <Button variant="secondary" onClick={closeForm}>
               Cancel
             </Button>
@@ -109,7 +190,7 @@ export default function Courses() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {courses.length} courses
+            {isLoading ? "Loading..." : `${courses.length} courses`}
           </h2>
           <Button onClick={openEmptyForm}>
             <Plus size={14} />
@@ -117,50 +198,39 @@ export default function Courses() {
           </Button>
         </div>
 
-        <div className="overflow-x-auto p-4">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">Title</th>
-                <th className="px-3 py-2 font-medium">Description</th>
-                <th className="px-3 py-2 font-medium">Teacher</th>
-                <th className="px-3 py-2 font-medium"></th>
-              </tr>
-            </thead>
+        <Table columns={["ID", "Title", "Description", "Teacher", "Action"]}>
+          {courses.map((course) => (
+            <tr
+              key={course.id}
+              className="border-b border-slate-100 hover:bg-slate-50"
+            >
+              <td className="px-3 py-2 text-slate-700">{course.id}</td>
+              <td className="px-3 py-2 text-slate-700">{course.title}</td>
+              <td className="px-3 py-2 text-slate-700">
+                <span className="block max-w-xs truncate">
+                  {course.description}
+                </span>
+              </td>
+              <td className="px-3 py-2 text-slate-700">
+                {findTeacherName(course.teacher)}
+              </td>
+              <td className="px-3 py-2">
+                <div className="flex gap-1">
+                  <IconButton onClick={() => openFormForEditing(course)}>
+                    <Pencil size={14} />
+                  </IconButton>
 
-            <tbody>
-              {courses.map((course) => (
-                <tr
-                  key={course.id}
-                  className="border-b border-slate-100 hover:bg-slate-50"
-                >
-                  <td className="px-3 py-2 text-slate-700">{course.id}</td>
-                  <td className="px-3 py-2 text-slate-700">{course.title}</td>
-                  <td className="px-3 py-2 text-slate-700">
-                    <span className="block max-w-xs truncate">
-                      {course.description}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {findTeacherName(course.teacher)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex gap-1">
-                      <IconButton onClick={() => openFormForEditing(course)}>
-                        <Pencil size={14} />
-                      </IconButton>
-
-                      <IconButton variant="danger">
-                        <Trash2 size={14} />
-                      </IconButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  <IconButton
+                    variant="danger"
+                    onClick={() => handleDelete(course)}
+                  >
+                    <Trash2 size={14} />
+                  </IconButton>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </Table>
       </div>
     </div>
   );
