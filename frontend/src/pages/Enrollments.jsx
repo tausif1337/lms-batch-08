@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { coursesApi, enrollmentsApi, studentsApi } from "../api.js";
+import { useFlash } from "../flash.js";
 import {
   Alert,
   Button,
+  ConfirmDialog,
   IconButton,
   PageHeader,
   Select,
@@ -16,7 +18,11 @@ export default function Enrollments() {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useFlash();
   const [isSaving, setIsSaving] = useState(false);
+
+  const [enrollmentToDelete, setEnrollmentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [studentId, setStudentId] = useState("");
   const [courseId, setCourseId] = useState("");
@@ -100,8 +106,10 @@ export default function Enrollments() {
     try {
       if (editingId === 0) {
         await enrollmentsApi.create(values);
+        setNotice("Enrollment added.");
       } else {
         await enrollmentsApi.update(editingId, values);
+        setNotice("Enrollment updated.");
       }
       setError("");
       closeForm();
@@ -113,18 +121,24 @@ export default function Enrollments() {
     }
   }
 
-  async function handleDelete(enrollment) {
-    const ok = window.confirm("Delete this enrollment?");
-    if (!ok) {
-      return;
-    }
+  function askToDelete(enrollment) {
+    setEnrollmentToDelete(enrollment);
+  }
+
+  async function confirmDelete() {
+    setIsDeleting(true);
 
     try {
-      await enrollmentsApi.remove(enrollment.id);
+      await enrollmentsApi.remove(enrollmentToDelete.id);
       setError("");
+      setNotice("Enrollment deleted.");
+      setEnrollmentToDelete(null);
       reload();
     } catch (problem) {
       setError(problem.message);
+      setEnrollmentToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -136,6 +150,7 @@ export default function Enrollments() {
       />
 
       <Alert>{error}</Alert>
+      <Alert variant="success">{notice}</Alert>
 
       {formIsOpen && (
         <form
@@ -227,7 +242,7 @@ export default function Enrollments() {
 
                   <IconButton
                     variant="danger"
-                    onClick={() => handleDelete(enrollment)}
+                    onClick={() => askToDelete(enrollment)}
                   >
                     <Trash2 size={14} />
                   </IconButton>
@@ -237,6 +252,19 @@ export default function Enrollments() {
           ))}
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={enrollmentToDelete !== null}
+        title="Delete enrollment"
+        message={
+          enrollmentToDelete
+            ? `Take ${findStudentName(enrollmentToDelete.student)} off ${findCourseTitle(enrollmentToDelete.course)}? This cannot be undone.`
+            : ""
+        }
+        isWorking={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setEnrollmentToDelete(null)}
+      />
     </div>
   );
 }

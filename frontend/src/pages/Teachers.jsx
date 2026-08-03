@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { teachersApi } from "../api.js";
+import { useFlash } from "../flash.js";
 import {
   Alert,
   Button,
   Checkbox,
+  ConfirmDialog,
   IconButton,
   Input,
   PageHeader,
@@ -16,13 +18,18 @@ import {
 //   2. useEffect()     reads the list from the API when the page opens
 //   3. reload()        re-runs that effect after a save or a delete
 //   4. handleSave()    creates a new row, or updates the one being edited
-//   5. handleDelete()  confirms, then deletes
-//   6. the JSX: error banner, form, table
+//   5. askToDelete() / confirmDelete()  opens the dialog, then deletes
+//   6. the JSX: banners, form, table, confirm dialog
 export default function Teachers() {
   const [teachers, setTeachers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useFlash();
   const [isSaving, setIsSaving] = useState(false);
+
+  // The row waiting on the confirm dialog, or null when it is closed.
+  const [teacherToDelete, setTeacherToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -87,8 +94,10 @@ export default function Teachers() {
     try {
       if (editingId === 0) {
         await teachersApi.create(values);
+        setNotice("Teacher added.");
       } else {
         await teachersApi.update(editingId, values);
+        setNotice("Teacher updated.");
       }
       setError("");
       closeForm();
@@ -100,21 +109,24 @@ export default function Teachers() {
     }
   }
 
-  async function handleDelete(teacher) {
-    // Deleting a teacher cascades to their courses, so say so.
-    const ok = window.confirm(
-      `Delete ${teacher.name || "this teacher"}? Their courses go too.`,
-    );
-    if (!ok) {
-      return;
-    }
+  function askToDelete(teacher) {
+    setTeacherToDelete(teacher);
+  }
+
+  async function confirmDelete() {
+    setIsDeleting(true);
 
     try {
-      await teachersApi.remove(teacher.id);
+      await teachersApi.remove(teacherToDelete.id);
       setError("");
+      setNotice("Teacher deleted.");
+      setTeacherToDelete(null);
       reload();
     } catch (problem) {
       setError(problem.message);
+      setTeacherToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -123,6 +135,7 @@ export default function Teachers() {
       <PageHeader title="Teachers" subtitle="The people who teach courses." />
 
       <Alert>{error}</Alert>
+      <Alert variant="success">{notice}</Alert>
 
       {formIsOpen && (
         <form
@@ -210,7 +223,7 @@ export default function Teachers() {
 
                   <IconButton
                     variant="danger"
-                    onClick={() => handleDelete(teacher)}
+                    onClick={() => askToDelete(teacher)}
                   >
                     <Trash2 size={14} />
                   </IconButton>
@@ -220,6 +233,15 @@ export default function Teachers() {
           ))}
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={teacherToDelete !== null}
+        title="Delete teacher"
+        message={`Delete ${teacherToDelete?.name || "this teacher"}? Their courses go too. This cannot be undone.`}
+        isWorking={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setTeacherToDelete(null)}
+      />
     </div>
   );
 }

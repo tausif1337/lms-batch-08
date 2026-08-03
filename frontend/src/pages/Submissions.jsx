@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { assignmentsApi, studentsApi, submissionsApi } from "../api.js";
+import { useFlash } from "../flash.js";
 import {
   Alert,
   Button,
+  ConfirmDialog,
   IconButton,
   PageHeader,
   Select,
@@ -34,7 +36,11 @@ export default function Submissions() {
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useFlash();
   const [isSaving, setIsSaving] = useState(false);
+
+  const [submissionToDelete, setSubmissionToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [assignmentId, setAssignmentId] = useState("");
   const [studentId, setStudentId] = useState("");
@@ -125,8 +131,10 @@ export default function Submissions() {
     try {
       if (editingId === 0) {
         await submissionsApi.create(values);
+        setNotice("Submission added.");
       } else {
         await submissionsApi.update(editingId, values);
+        setNotice("Submission updated.");
       }
       setError("");
       closeForm();
@@ -138,20 +146,24 @@ export default function Submissions() {
     }
   }
 
-  async function handleDelete(submission) {
-    const ok = window.confirm(
-      "Delete this submission? Its result goes too.",
-    );
-    if (!ok) {
-      return;
-    }
+  function askToDelete(submission) {
+    setSubmissionToDelete(submission);
+  }
+
+  async function confirmDelete() {
+    setIsDeleting(true);
 
     try {
-      await submissionsApi.remove(submission.id);
+      await submissionsApi.remove(submissionToDelete.id);
       setError("");
+      setNotice("Submission deleted.");
+      setSubmissionToDelete(null);
       reload();
     } catch (problem) {
       setError(problem.message);
+      setSubmissionToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -160,6 +172,7 @@ export default function Submissions() {
       <PageHeader title="Submissions" subtitle="Work handed in by students." />
 
       <Alert>{error}</Alert>
+      <Alert variant="success">{notice}</Alert>
 
       {formIsOpen && (
         <form
@@ -272,7 +285,7 @@ export default function Submissions() {
 
                   <IconButton
                     variant="danger"
-                    onClick={() => handleDelete(submission)}
+                    onClick={() => askToDelete(submission)}
                   >
                     <Trash2 size={14} />
                   </IconButton>
@@ -282,6 +295,19 @@ export default function Submissions() {
           ))}
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={submissionToDelete !== null}
+        title="Delete submission"
+        message={
+          submissionToDelete
+            ? `Delete ${findStudentName(submissionToDelete.student)}'s work on ${findAssignmentTitle(submissionToDelete.assignment)}? Its result goes too. This cannot be undone.`
+            : ""
+        }
+        isWorking={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setSubmissionToDelete(null)}
+      />
     </div>
   );
 }

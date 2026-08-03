@@ -73,13 +73,14 @@ frontend/src/
   api.js              every call to the backend, in one file
   auth.js             the auth context and the useAuth() hook
   AuthContext.jsx     AuthProvider: who is logged in
+  flash.js            useFlash(): a "Saved" line that clears itself
   App.jsx             the list of URLs
   Sidebar.jsx         sidebar + content frame
   components/
     index.js          one import for all of the below
-    Alert.jsx  Button.jsx  Checkbox.jsx  Div.jsx  IconButton.jsx
-    Input.jsx  PageHeader.jsx  ProtectedRoute.jsx
-    Select.jsx  Table.jsx  Textarea.jsx
+    Alert.jsx  Button.jsx  Checkbox.jsx  ConfirmDialog.jsx
+    Div.jsx  IconButton.jsx  Input.jsx  PageHeader.jsx
+    ProtectedRoute.jsx  Select.jsx  Table.jsx  Textarea.jsx
   pages/
     Login.jsx  Register.jsx  Dashboard.jsx  NotFound.jsx
     Students.jsx      <-- read this one first
@@ -94,8 +95,17 @@ frontend/src/
 2. `useEffect()` reads the list from the API when the page opens
 3. `reload()` re-runs that effect after a save or a delete
 4. `handleSave()` creates a new row, or updates the one being edited
-5. `handleDelete()` confirms, then deletes
-6. the JSX: error banner, form, table
+5. `askToDelete()` opens the confirm dialog; `confirmDelete()` runs once the user agrees
+6. the JSX: banners, form, table, confirm dialog
+
+### Telling the user what happened
+
+Two banners sit above the form on every page:
+
+- `<Alert>` in red for anything that went wrong. The message is whatever the backend said, flattened by `readError()` in `api.js`, so a rejected field reads `email: Enter a valid email address.` rather than `[object Object]`.
+- `<Alert variant="success">` in green for `Teacher added.`, `Teacher updated.`, `Teacher deleted.` The text comes from `useFlash()` in `flash.js`, which clears it after four seconds so it does not pile up.
+
+Deleting goes through `components/ConfirmDialog.jsx`, not `window.confirm()`. The trash button only records which row was clicked; the dialog names that row and spells out what else the delete takes with it ("Their courses go too"), and closes on Cancel, on Escape, or on a click outside the card. The confirm button reads "Deleting…" and is disabled while the request is in flight.
 
 The repetition across the eight pages is deliberate. Each page stands on its own so you can read one without chasing an abstraction through four other files. The only things shared are the plain UI pieces in `components/` and the network calls in `api.js`.
 

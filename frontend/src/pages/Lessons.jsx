@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { coursesApi, lessonsApi } from "../api.js";
+import { useFlash } from "../flash.js";
 import {
   Alert,
   Button,
+  ConfirmDialog,
   IconButton,
   Input,
   PageHeader,
@@ -17,7 +19,11 @@ export default function Lessons() {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useFlash();
   const [isSaving, setIsSaving] = useState(false);
+
+  const [lessonToDelete, setLessonToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [title, setTitle] = useState("");
   const [courseId, setCourseId] = useState("");
@@ -93,8 +99,10 @@ export default function Lessons() {
     try {
       if (editingId === 0) {
         await lessonsApi.create(values);
+        setNotice("Lesson added.");
       } else {
         await lessonsApi.update(editingId, values);
+        setNotice("Lesson updated.");
       }
       setError("");
       closeForm();
@@ -106,20 +114,24 @@ export default function Lessons() {
     }
   }
 
-  async function handleDelete(lesson) {
-    const ok = window.confirm(
-      `Delete ${lesson.title}? Its assignments go too.`,
-    );
-    if (!ok) {
-      return;
-    }
+  function askToDelete(lesson) {
+    setLessonToDelete(lesson);
+  }
+
+  async function confirmDelete() {
+    setIsDeleting(true);
 
     try {
-      await lessonsApi.remove(lesson.id);
+      await lessonsApi.remove(lessonToDelete.id);
       setError("");
+      setNotice("Lesson deleted.");
+      setLessonToDelete(null);
       reload();
     } catch (problem) {
       setError(problem.message);
+      setLessonToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -131,6 +143,7 @@ export default function Lessons() {
       />
 
       <Alert>{error}</Alert>
+      <Alert variant="success">{notice}</Alert>
 
       {formIsOpen && (
         <form
@@ -223,7 +236,7 @@ export default function Lessons() {
 
                   <IconButton
                     variant="danger"
-                    onClick={() => handleDelete(lesson)}
+                    onClick={() => askToDelete(lesson)}
                   >
                     <Trash2 size={14} />
                   </IconButton>
@@ -233,6 +246,15 @@ export default function Lessons() {
           ))}
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={lessonToDelete !== null}
+        title="Delete lesson"
+        message={`Delete ${lessonToDelete?.title}? Its assignments go too. This cannot be undone.`}
+        isWorking={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setLessonToDelete(null)}
+      />
     </div>
   );
 }

@@ -6,9 +6,11 @@ import {
   studentsApi,
   submissionsApi,
 } from "../api.js";
+import { useFlash } from "../flash.js";
 import {
   Alert,
   Button,
+  ConfirmDialog,
   IconButton,
   Input,
   PageHeader,
@@ -34,7 +36,11 @@ export default function Results() {
   const [assignments, setAssignments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useFlash();
   const [isSaving, setIsSaving] = useState(false);
+
+  const [resultToDelete, setResultToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [submissionId, setSubmissionId] = useState("");
   const [score, setScore] = useState("");
@@ -138,8 +144,10 @@ export default function Results() {
     try {
       if (editingId === 0) {
         await resultsApi.create(values);
+        setNotice("Result added.");
       } else {
         await resultsApi.update(editingId, values);
+        setNotice("Result updated.");
       }
       setError("");
       closeForm();
@@ -157,18 +165,24 @@ export default function Results() {
     }
   }
 
-  async function handleDelete(result) {
-    const ok = window.confirm("Delete this result?");
-    if (!ok) {
-      return;
-    }
+  function askToDelete(result) {
+    setResultToDelete(result);
+  }
+
+  async function confirmDelete() {
+    setIsDeleting(true);
 
     try {
-      await resultsApi.remove(result.id);
+      await resultsApi.remove(resultToDelete.id);
       setError("");
+      setNotice("Result deleted.");
+      setResultToDelete(null);
       reload();
     } catch (problem) {
       setError(problem.message);
+      setResultToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -180,6 +194,7 @@ export default function Results() {
       />
 
       <Alert>{error}</Alert>
+      <Alert variant="success">{notice}</Alert>
 
       {formIsOpen && (
         <form
@@ -272,7 +287,7 @@ export default function Results() {
 
                   <IconButton
                     variant="danger"
-                    onClick={() => handleDelete(result)}
+                    onClick={() => askToDelete(result)}
                   >
                     <Trash2 size={14} />
                   </IconButton>
@@ -282,6 +297,19 @@ export default function Results() {
           ))}
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={resultToDelete !== null}
+        title="Delete result"
+        message={
+          resultToDelete
+            ? `Delete the result for ${describeSubmission(resultToDelete.submission)}? The submission can then be graded again. This cannot be undone.`
+            : ""
+        }
+        isWorking={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setResultToDelete(null)}
+      />
     </div>
   );
 }

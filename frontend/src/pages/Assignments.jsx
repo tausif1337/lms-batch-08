@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { assignmentsApi, coursesApi, lessonsApi } from "../api.js";
+import { useFlash } from "../flash.js";
 import {
   Alert,
   Button,
+  ConfirmDialog,
   IconButton,
   Input,
   PageHeader,
@@ -37,7 +39,11 @@ export default function Assignments() {
   const [lessons, setLessons] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useFlash();
   const [isSaving, setIsSaving] = useState(false);
+
+  const [assignmentToDelete, setAssignmentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -158,8 +164,10 @@ export default function Assignments() {
 
       if (editingId === 0) {
         await assignmentsApi.create(values);
+        setNotice("Assignment added.");
       } else {
         await assignmentsApi.update(editingId, values);
+        setNotice("Assignment updated.");
       }
       setError("");
       closeForm();
@@ -171,20 +179,24 @@ export default function Assignments() {
     }
   }
 
-  async function handleDelete(assignment) {
-    const ok = window.confirm(
-      `Delete ${assignment.title}? Its submissions go too.`,
-    );
-    if (!ok) {
-      return;
-    }
+  function askToDelete(assignment) {
+    setAssignmentToDelete(assignment);
+  }
+
+  async function confirmDelete() {
+    setIsDeleting(true);
 
     try {
-      await assignmentsApi.remove(assignment.id);
+      await assignmentsApi.remove(assignmentToDelete.id);
       setError("");
+      setNotice("Assignment deleted.");
+      setAssignmentToDelete(null);
       reload();
     } catch (problem) {
       setError(problem.message);
+      setAssignmentToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -193,6 +205,7 @@ export default function Assignments() {
       <PageHeader title="Assignments" subtitle="Work set against a lesson." />
 
       <Alert>{error}</Alert>
+      <Alert variant="success">{notice}</Alert>
 
       {formIsOpen && (
         <form
@@ -308,7 +321,7 @@ export default function Assignments() {
 
                   <IconButton
                     variant="danger"
-                    onClick={() => handleDelete(assignment)}
+                    onClick={() => askToDelete(assignment)}
                   >
                     <Trash2 size={14} />
                   </IconButton>
@@ -318,6 +331,15 @@ export default function Assignments() {
           ))}
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={assignmentToDelete !== null}
+        title="Delete assignment"
+        message={`Delete ${assignmentToDelete?.title}? Its submissions go too. This cannot be undone.`}
+        isWorking={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setAssignmentToDelete(null)}
+      />
     </div>
   );
 }

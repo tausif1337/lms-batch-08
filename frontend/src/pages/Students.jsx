@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { studentsApi } from "../api.js";
+import { useFlash } from "../flash.js";
 import {
   Alert,
   Button,
   Checkbox,
+  ConfirmDialog,
   IconButton,
   Input,
   PageHeader,
@@ -16,14 +18,20 @@ import {
 //   2. useEffect()     reads the list from the API when the page opens
 //   3. reload()        re-runs that effect after a save or a delete
 //   4. handleSave()    creates a new row, or updates the one being edited
-//   5. handleDelete()  confirms, then deletes
-//   6. the JSX: error banner, form, table
+//   5. askToDelete() / confirmDelete()  opens the dialog, then deletes
+//   6. the JSX: banners, form, table, confirm dialog
 export default function Students() {
   // 1. state
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // A short "Saved" line that clears itself after a few seconds.
+  const [notice, setNotice] = useFlash();
   const [isSaving, setIsSaving] = useState(false);
+
+  // The row waiting on the confirm dialog, or null when it is closed.
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -101,8 +109,10 @@ export default function Students() {
     try {
       if (editingId === 0) {
         await studentsApi.create(values);
+        setNotice("Student added.");
       } else {
         await studentsApi.update(editingId, values);
+        setNotice("Student updated.");
       }
       setError("");
       closeForm();
@@ -114,21 +124,26 @@ export default function Students() {
     }
   }
 
-  // 5. confirm, then delete
-  async function handleDelete(student) {
-    const ok = window.confirm(
-      `Delete ${student.name || "this student"}? Their enrollments and submissions go too.`,
-    );
-    if (!ok) {
-      return;
-    }
+  // 5. the trash button only opens the dialog. ConfirmDialog calls the second
+  // function once the user has actually agreed.
+  function askToDelete(student) {
+    setStudentToDelete(student);
+  }
+
+  async function confirmDelete() {
+    setIsDeleting(true);
 
     try {
-      await studentsApi.remove(student.id);
+      await studentsApi.remove(studentToDelete.id);
       setError("");
+      setNotice("Student deleted.");
+      setStudentToDelete(null);
       reload();
     } catch (problem) {
       setError(problem.message);
+      setStudentToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -138,6 +153,7 @@ export default function Students() {
       <PageHeader title="Students" subtitle="Everyone enrolled in the school." />
 
       <Alert>{error}</Alert>
+      <Alert variant="success">{notice}</Alert>
 
       {formIsOpen && (
         <form
@@ -247,7 +263,7 @@ export default function Students() {
 
                   <IconButton
                     variant="danger"
-                    onClick={() => handleDelete(student)}
+                    onClick={() => askToDelete(student)}
                   >
                     <Trash2 size={14} />
                   </IconButton>
@@ -257,6 +273,15 @@ export default function Students() {
           ))}
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={studentToDelete !== null}
+        title="Delete student"
+        message={`Delete ${studentToDelete?.name || "this student"}? Their enrollments and submissions go too. This cannot be undone.`}
+        isWorking={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setStudentToDelete(null)}
+      />
     </div>
   );
 }
