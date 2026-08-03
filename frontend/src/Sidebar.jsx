@@ -91,13 +91,22 @@ export default function Sidebar() {
         </div>
 
         <div className="border-t border-slate-200 p-3">
-          <div className="mb-2 flex items-center gap-2 px-2 text-sm text-slate-600">
+          {/* The name doubles as the way into your own profile. */}
+          <Link
+            to="/profile"
+            className={
+              "mb-1 flex items-center gap-2 rounded-md px-3 py-2 text-sm " +
+              (location.pathname === "/profile"
+                ? "bg-indigo-50 font-medium text-indigo-700"
+                : "text-slate-600 hover:bg-slate-100")
+            }
+          >
             <UserRound size={16} />
             <span className="truncate">{user?.username ?? "Signed in"}</span>
             <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
               {roleLabel(user?.role)}
             </span>
-          </div>
+          </Link>
 
           <button
             onClick={handleLogOut}

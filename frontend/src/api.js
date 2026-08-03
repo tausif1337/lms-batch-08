@@ -147,6 +147,23 @@ export function fetchProfile() {
   return request("/profile/");
 }
 
+// Your own name, email and phone. The server only ever edits the account the
+// token belongs to, and it will not accept `role` from here.
+export function updateProfile(values) {
+  return request("/profile/", {
+    method: "PATCH",
+    body: JSON.stringify(values),
+  });
+}
+
+// Needs the current password, not just a live session.
+export function changePassword(values) {
+  return request("/change-password/", {
+    method: "POST",
+    body: JSON.stringify(values),
+  });
+}
+
 export function requestPasswordReset(email) {
   return request("/password-reset/", {
     method: "POST",

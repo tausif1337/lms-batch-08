@@ -92,6 +92,20 @@ Reading any list needs only a valid token. Writing is checked by the permission 
 
 The frontend hides the buttons a role cannot use — `frontend/src/permissions.js` holds the same table — but that is only so the page does not offer things that will fail. **The API is what enforces it.** A hand-written `fetch` from the browser console is refused exactly the same way.
 
+### Your own account
+
+Whatever your role, **Your profile** in the sidebar lets you change your own first name, last name, email and phone, and set a new password. Both go through `/api/profile/` and `/api/change-password/`, which only ever act on the account the token belongs to — there is no way to aim either at somebody else.
+
+Three things are deliberately not on that page:
+
+- **Role** — changing your own would be a promotion. The serializer does not accept the field, so posting `{"role": "admin"}` is ignored rather than obeyed.
+- **Username** — it is how an admin finds you, and it is not what you log in with.
+- **Password without the old one** — `/change-password/` requires `current_password`, so a borrowed browser tab is not enough to take an account over.
+
+Your **phone number is your login**, so changing it changes what you type next time; the page says so under the field. Phone and email both have to stay unique — email because password reset looks accounts up by it.
+
+Changing your password signs you out. Refresh tokens are blacklisted server-side, but an access token already issued cannot be revoked (a JWT is not looked up on each request), so the frontend ends the session itself and the login page explains why.
+
 ### What roles cannot do here
 
 `Teacher` and `Student` rows are still not linked to login accounts. So the server cannot tell whose work a submission is, which means:
@@ -122,7 +136,7 @@ frontend/src/
     Div.jsx  IconButton.jsx  Input.jsx  PageHeader.jsx
     ProtectedRoute.jsx  Select.jsx  Table.jsx  Textarea.jsx
   pages/
-    Login.jsx  Accounts.jsx  Dashboard.jsx  NotFound.jsx
+    Login.jsx  Accounts.jsx  Profile.jsx  Dashboard.jsx  NotFound.jsx
     Students.jsx      <-- read this one first
     Teachers.jsx  Courses.jsx  Enrollments.jsx
     Lessons.jsx   Assignments.jsx
@@ -185,7 +199,8 @@ Base URL: `http://127.0.0.1:8000/api`
 |---|---|---|
 | `/register/` | POST | **Admin only** |
 | `/login/` | POST | No |
-| `/profile/` | GET | Yes |
+| `/profile/` | GET PATCH | Yes — always your own account |
+| `/change-password/` | POST | Yes — needs your current password |
 | `/password-reset/` | POST | No |
 | `/password-reset-confirm/` | POST | No |
 | `/teacher/`, `/teacher/{id}/` | GET POST / GET PUT PATCH DELETE | Yes |
@@ -205,4 +220,6 @@ Note the naming: `/submission/` is singular but `/results/` is plural.
 
 ## Known gaps
 
-Password reset is not usable end to end. `EMAIL_BACKEND` is the console backend, so reset links only print to the terminal running Django, and no `/reset-password` page exists in the frontend yet.
+Password reset is not usable end to end. `EMAIL_BACKEND` is the console backend, so reset links only print to the terminal running Django, and no `/reset-password` page exists in the frontend yet. Someone who *knows* their password can change it from their profile page; someone who has forgotten it still needs an admin to reset it in Django admin.
+
+The Accounts page creates accounts but does not list them. Seeing who exists, changing a role, or deactivating somebody is done at http://127.0.0.1:8000/admin/backend/profile/.

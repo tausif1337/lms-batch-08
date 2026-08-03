@@ -1,6 +1,6 @@
 from django.urls import path
 
-from backend.views import(PasswordResetConfirmView, PasswordResetRequestView, RegisterView,
+from backend.views import(ChangePasswordView, PasswordResetConfirmView, PasswordResetRequestView, RegisterView,
                           LoginView,ProtectedView,TeacherListCreateView,StudentListCreateView,TeacherRetrieveUpdateDestroyAPIView,
                           StudentRetrieveUpdateDestroyAPIView,CourseListCreateView,
                           CourseRetrieveUpdateDestroyAPIView,EnrollmentListCreateView,
@@ -14,6 +14,7 @@ urlpatterns = [
     path('login/',LoginView.as_view(),name='login'),
     path('register/',RegisterView.as_view(),name='register'),
     path('profile/',ProtectedView.as_view(),name='protected'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path("password-reset/", PasswordResetRequestView.as_view()),
     path("password-reset-confirm/", PasswordResetConfirmView.as_view()),
 

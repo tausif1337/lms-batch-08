@@ -13,6 +13,7 @@ import Submissions from "./pages/Submissions.jsx";
 import Results from "./pages/Results.jsx";
 import Login from "./pages/Login.jsx";
 import Accounts from "./pages/Accounts.jsx";
+import Profile from "./pages/Profile.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
@@ -42,6 +43,9 @@ export default function App() {
         <Route path="/assignments" element={<Assignments />} />
         <Route path="/submissions" element={<Submissions />} />
         <Route path="/results" element={<Results />} />
+
+        {/* Your own account. Every role gets this one. */}
+        <Route path="/profile" element={<Profile />} />
 
         {/* Admins only, and the API refuses everyone else regardless. */}
         <Route

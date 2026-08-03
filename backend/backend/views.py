@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.tokens import default_token_generator
 
-from .serializers import (AssignmentSerializer, CourseSerializer, EnrollmentSerializer, LessonSerializer, RegisterSerializer, LoginSerializer, ResultSerializer, StudentSerializer, SubmissionSerializer, TeacherSerializer)
+from .serializers import (AssignmentSerializer, ChangePasswordSerializer, CourseSerializer, EnrollmentSerializer, LessonSerializer, ProfileUpdateSerializer, RegisterSerializer, LoginSerializer, ResultSerializer, StudentSerializer, SubmissionSerializer, TeacherSerializer)
 
 from .models import (Assignment, Course, Enrollment, Lesson, Profile, Results, Student, Submission, Teacher)
 from .permissions import AdminWrites, IsAdmin, SubmissionWrites, TeachingStaffWrites, role_of
@@ -158,23 +158,71 @@ class LoginView(APIView):
         })
 
 class ProtectedView(APIView):
-    """Protected view that requires authentication."""
+    """Your own account: GET to read it, PATCH to change it.
+
+    PATCH only ever touches request.user, so there is no way to aim it at
+    somebody else's account, and `role` is not a field the serializer accepts.
+    """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        user = request.user
-        user_data = {
+    def _user_data(self, user):
+        profile = Profile.objects.filter(user=user).first()
+        return {
             'user_id': user.id,
             'username': user.username,
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
+            'phone': profile.phone if profile else None,
             'role': role_of(user),
         }
+
+    def get(self, request):
         return Response({
             'message': 'successfully fetched this user',
-            'user': user_data
+            'user': self._user_data(request.user)
         })
+
+    def patch(self, request):
+        serializer = ProfileUpdateSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        request.user.refresh_from_db()
+        return Response({
+            'message': 'Your details have been saved.',
+            'user': self._user_data(request.user)
+        })
+
+
+class ChangePasswordView(APIView):
+    """Change your own password, knowing the old one."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+
+        # Refresh tokens issued earlier are retired. The access token already
+        # in the caller's hands cannot be revoked — JWTs are not looked up on
+        # each request — so the frontend signs you out and makes you log in
+        # again with the new password.
+        blacklist_user_tokens(user)
+
+        return Response(
+            {'detail': 'Password changed. Please log in again.'},
+            status=status.HTTP_200_OK,
+        )
     
 class TeacherListCreateView(generics.ListCreateAPIView):
     queryset = Teacher.objects.all()

@@ -74,6 +74,92 @@ class LoginSerializer(serializers.Serializer):
     phone = serializers.CharField(required=True)
     password = serializers.CharField(required=True, write_only=True)
 
+
+class ProfileUpdateSerializer(serializers.Serializer):
+    """What you are allowed to change about yourself.
+
+    Not on this list, on purpose:
+      role      - changing your own would be a promotion. Admins only, in
+                  Django admin.
+      username  - it is how an admin finds you; the phone is what you log in
+                  with, so there is nothing to gain by renaming yourself.
+      password  - has its own endpoint, because it needs the old one first.
+    """
+
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    email = serializers.EmailField(required=False)
+    phone = serializers.CharField(required=False, max_length=20)
+
+    def validate_phone(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError(
+                "Your phone number is how you sign in, so it cannot be blank."
+            )
+
+        me = self.context["request"].user
+        if Profile.objects.filter(phone=value).exclude(user=me).exists():
+            raise serializers.ValidationError(
+                "Another account already uses that phone number."
+            )
+        return value
+
+    def validate_email(self, value):
+        # Password reset looks an account up by email, so two accounts sharing
+        # one would make that ambiguous.
+        me = self.context["request"].user
+        if User.objects.filter(email__iexact=value).exclude(pk=me.pk).exists():
+            raise serializers.ValidationError(
+                "Another account already uses that email address."
+            )
+        return value
+
+    @transaction.atomic
+    def save(self, **kwargs):
+        me = self.context["request"].user
+        data = self.validated_data
+
+        for field in ("first_name", "last_name", "email"):
+            if field in data:
+                setattr(me, field, data[field])
+        me.save()
+
+        if "phone" in data:
+            profile = Profile.objects.filter(user=me).first()
+            if profile:
+                profile.phone = data["phone"]
+                profile.save()
+
+        return me
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate_current_password(self, value):
+        # Knowing the old password is what makes this yours to change. Without
+        # it, a borrowed browser tab would be enough to take the account.
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError("That is not your current password.")
+        return value
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({
+                "confirm_password": "The two new passwords do not match."
+            })
+
+        if attrs["new_password"] == attrs["current_password"]:
+            raise serializers.ValidationError({
+                "new_password": "The new password has to be different from the old one."
+            })
+
+        validate_password(attrs["new_password"], user=self.context["request"].user)
+        return attrs
+
 #password 
 
 

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { useAuth } from "../auth.js";
+import { takeNoticeLeftForLogin } from "../flash.js";
 import { Alert, Button, Input } from "../components/index.js";
 
 export default function Login() {
@@ -16,6 +17,11 @@ export default function Login() {
 
   // ProtectedRoute stores the page you were trying to reach here.
   const goBackTo = location.state?.from ?? "/";
+
+  // Left by the profile page after a password change, so the sign-out that
+  // follows does not look like something went wrong. Read once, on the first
+  // render, and cleared as it is read.
+  const [notice] = useState(() => takeNoticeLeftForLogin());
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -41,6 +47,7 @@ export default function Login() {
           <h1 className="text-xl font-semibold text-slate-900">Log in to LMS</h1>
         </div>
 
+        <Alert variant="success">{notice}</Alert>
         <Alert>{error}</Alert>
 
         <form onSubmit={handleSubmit}>
