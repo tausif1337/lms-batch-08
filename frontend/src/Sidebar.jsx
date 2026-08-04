@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth.js";
 import { ADMIN, roleLabel } from "./permissions.js";
@@ -8,12 +9,19 @@ import {
   GraduationCap,
   LayoutDashboard,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
   Send,
   Trophy,
   UserPlus,
   UserRound,
   Users,
 } from "lucide-react";
+
+// Whether the sidebar is collapsed is remembered across reloads, the same way
+// the session is. It is only a preference, so a broken value is not worth
+// guarding against beyond the === "true" check.
+const COLLAPSED_KEY = "lms:sidebarCollapsed";
 
 const menu = [
   { address: "/", text: "Dashboard", icon: <LayoutDashboard size={16} /> },
@@ -48,6 +56,14 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { user, logOut } = useAuth();
 
+  const [isCollapsed, setIsCollapsed] = useState(
+    () => localStorage.getItem(COLLAPSED_KEY) === "true",
+  );
+
+  useEffect(() => {
+    localStorage.setItem(COLLAPSED_KEY, String(isCollapsed));
+  }, [isCollapsed]);
+
   const visibleMenu = menu.filter(
     (item) => !item.onlyFor || item.onlyFor === user?.role,
   );
@@ -57,12 +73,50 @@ export default function Sidebar() {
     navigate("/login", { replace: true });
   }
 
+  // Collapsed rows are icon-only, so the label has to survive as a tooltip.
+  const rowLayout = isCollapsed ? "justify-center px-0" : "gap-3 px-3";
+
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <div className="flex w-60 flex-col border-r border-slate-200 bg-white">
-        <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-4">
-          <GraduationCap size={22} className="text-indigo-600" />
-          <span className="text-lg font-semibold text-slate-900">LMS</span>
+      <div
+        className={
+          "flex flex-col border-r border-slate-200 bg-white transition-[width] duration-200 " +
+          (isCollapsed ? "w-16" : "w-60")
+        }
+      >
+        <div
+          className={
+            "flex items-center border-b border-slate-200 py-4 " +
+            (isCollapsed ? "justify-center px-2" : "gap-2 px-4")
+          }
+        >
+          {/* Collapsed, the toggle takes the logo's place: at this width there
+              is only room for one thing, and the way back out matters more. */}
+          {isCollapsed ? (
+            <button
+              onClick={() => setIsCollapsed(false)}
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
+              aria-expanded={false}
+              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            >
+              <PanelLeftOpen size={20} />
+            </button>
+          ) : (
+            <>
+              <GraduationCap size={22} className="text-indigo-600" />
+              <span className="text-lg font-semibold text-slate-900">LMS</span>
+              <button
+                onClick={() => setIsCollapsed(true)}
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+                aria-expanded={true}
+                className="ml-auto rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <PanelLeftClose size={20} />
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex-1 p-3">
@@ -78,13 +132,16 @@ export default function Sidebar() {
               <Link
                 key={item.address}
                 to={item.address}
+                title={isCollapsed ? item.text : undefined}
                 className={
-                  "mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm " +
+                  "mb-1 flex items-center rounded-md py-2 text-sm " +
+                  rowLayout +
+                  " " +
                   colours
                 }
               >
                 {item.icon}
-                {item.text}
+                {!isCollapsed && item.text}
               </Link>
             );
           })}
@@ -94,26 +151,40 @@ export default function Sidebar() {
           {/* The name doubles as the way into your own profile. */}
           <Link
             to="/profile"
+            title={
+              isCollapsed
+                ? `${user?.username ?? "Signed in"} (${roleLabel(user?.role)})`
+                : undefined
+            }
             className={
-              "mb-1 flex items-center gap-2 rounded-md px-3 py-2 text-sm " +
+              "mb-1 flex items-center rounded-md py-2 text-sm " +
+              (isCollapsed ? "justify-center px-0 " : "gap-2 px-3 ") +
               (location.pathname === "/profile"
                 ? "bg-indigo-50 font-medium text-indigo-700"
                 : "text-slate-600 hover:bg-slate-100")
             }
           >
             <UserRound size={16} />
-            <span className="truncate">{user?.username ?? "Signed in"}</span>
-            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-              {roleLabel(user?.role)}
-            </span>
+            {!isCollapsed && (
+              <>
+                <span className="truncate">{user?.username ?? "Signed in"}</span>
+                <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                  {roleLabel(user?.role)}
+                </span>
+              </>
+            )}
           </Link>
 
           <button
             onClick={handleLogOut}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"
+            title={isCollapsed ? "Log out" : undefined}
+            className={
+              "flex w-full items-center rounded-md py-2 text-sm text-slate-600 hover:bg-slate-100 " +
+              rowLayout
+            }
           >
             <LogOut size={16} />
-            Log out
+            {!isCollapsed && "Log out"}
           </button>
         </div>
       </div>
