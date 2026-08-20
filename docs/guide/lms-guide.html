@@ -591,6 +591,7 @@ p.figref {
 <li><a href="#94-protectedroutejsx-the-bouncer">9.4 ProtectedRoute.jsx: the bouncer</a></li>
 <li><a href="#95-appjsx-the-route-table">9.5 App.jsx: the route table</a></li>
 <li><a href="#96-sidebarjsx-the-menu-and-the-hole-the-pages-fall-into">9.6 Sidebar.jsx: the menu and the hole the pages fall into</a></li>
+<li><a href="#collapsing-the-sidebar">Collapsing the sidebar</a></li>
 <li><a href="#97-loginjsx-the-form">9.7 Login.jsx: the form</a></li>
 <li><a href="#98-what-happens-when-you-press-log-in">9.8 What happens when you press Log in</a></li>
 <li><a href="#what-you-have-now">What you have now</a></li>
@@ -603,6 +604,7 @@ p.figref {
 <li><a href="#props-how-a-page-tells-a-component-what-to-say">Props: how a page tells a component what to say</a></li>
 <li><a href="#children-the-stuff-between-the-opening-and-closing-tags">children: the stuff between the opening and closing tags</a></li>
 <li><a href="#the-rest-spread-pattern">The rest spread pattern</a></li>
+<li><a href="#the-password-box-and-the-eye-button">The password box, and the eye button</a></li>
 <li><a href="#stylesjs-two-strings-that-live-in-one-place">styles.js: two strings that live in one place</a></li>
 <li><a href="#the-looks-object-one-component-several-appearances">The looks object: one component, several appearances</a></li>
 <li><a href="#iconbutton-a-button-that-is-only-an-icon">IconButton: a button that is only an icon</a></li>
@@ -670,7 +672,7 @@ p.figref {
 <li><a href="#frontendsrc">frontend/src/</a></li>
 <li><a href="#frontendsrccomponents">frontend/src/components/</a></li>
 <li><a href="#frontendsrcpages">frontend/src/pages/</a></li>
-<li><a href="#two-things-in-the-repo-that-the-app-never-touches">Two things in the repo that the app never touches</a></li>
+<li><a href="#two-things-in-the-repo-that-the-app-never-touches">Two things on disk that the app never reads</a></li>
 <li><a href="#follow-one-click-end-to-end-adding-a-teacher">Follow one click end to end: adding a teacher</a></li>
 <li><a href="#a-shorter-trace-logging-in">A shorter trace: logging in</a></li>
 <li><a href="#glossary">Glossary</a></li>
@@ -862,7 +864,7 @@ p.figref {
 </code></pre></div>
 
 <p>Here is exactly what happens when you open the Teachers page and the table fills up:</p>
-<div class="codehilite"><pre><span></span><code>   BROWSER                              SERVER (Django, port 8000)
+<div class="codehilite"><pre><span></span><code>   BROWSER                              SERVER (Django, port 8001)
    (React, port 5180)
 
    pages/Teachers.jsx
@@ -873,7 +875,7 @@ p.figref {
    teachersApi.list()
         |
         v
-   fetch(&quot;http://127.0.0.1:8000/api/teacher/&quot;)
+   fetch(&quot;http://127.0.0.1:8001/api/teacher/&quot;)
    with header  Authorization: Bearer &lt;token&gt;
         |
         |============ HTTP request ============&gt;
@@ -913,7 +915,7 @@ p.figref {
 </code></pre></div>
 
 <p>Read that diagram once now and again once you have the backend working. Every single feature in this app follows that path. The only things that change are the URL, the view, the serializer and the model.</p>
-<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>The two halves run as two separate programs on two different port numbers. Django on <code>http://127.0.0.1:8000</code>, the React dev server on <code>http://localhost:5180</code>. A dev server is a small program that serves your app to the browser while you are still working on it. You will need both running at once, in two terminal windows, plus MySQL. Three things, every time.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Starting only the React side, seeing the login page appear, and assuming everything is fine. The login page is drawn entirely in the browser, so it renders happily with no backend at all. You only find out when you press <strong>Log in</strong> and get the red banner "Could not reach the server. Is Django running on http://127.0.0.1:8000?". That message is written into <code>api.js</code> for exactly this moment.</p></div></div>
+<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>The two halves run as two separate programs on two different port numbers. Django on <code>http://127.0.0.1:8001</code>, the React dev server on <code>http://localhost:5180</code>. A dev server is a small program that serves your app to the browser while you are still working on it. You will need both running at once, in two terminal windows, plus MySQL. Three things, every time.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Starting only the React side, seeing the login page appear, and assuming everything is fine. The login page is drawn entirely in the browser, so it renders happily with no backend at all. You only find out when you press <strong>Log in</strong> and get the red banner "Could not reach the server. Is Django running on http://127.0.0.1:8001?". That message is written into <code>api.js</code> for exactly this moment.</p></div></div>
 <h3 id="the-nine-things-the-app-stores">The nine things the app stores</h3>
 <p>All nine live in one file, <code>backend/backend/models.py</code>. A <strong>model</strong> is a Python class that describes one table in the database. One class, one table, one kind of record.</p>
 <table>
@@ -1061,7 +1063,7 @@ p.figref {
 </tr>
 <tr>
 <td>django-cors-headers</td>
-<td>Lets the browser page at port 5180 call the server at port 8000</td>
+<td>Lets the browser page at port 5180 call the server at port 8001</td>
 <td>4.9.0</td>
 <td><code>pip show django-cors-headers</code></td>
 </tr>
@@ -1175,7 +1177,7 @@ PyJWT==2.10.1
 <ol>
 <li>Read the error message from the bottom up. The last line usually names the file and the line number.</li>
 <li>Compare your file with the book's, character by character, on the line the error names. Look for a missing comma, a missing colon, a capital letter that should be lowercase, or a quote that was never closed.</li>
-<li>Check that all three programs are actually running: MySQL, Django on port 8000, and Vite on port 5180.</li>
+<li>Check that all three programs are actually running: MySQL, Django on port 8001, and Vite on port 5180.</li>
 </ol>
 <p>If those three do not do it, go to the troubleshooting chapter at the back. It lists the errors this specific project produces, with the exact text you will see and what causes it. The Watchman timeout when you start <code>runserver</code>, the browser blocking every call because Vite opened on a port the backend does not have on its list (that block is called CORS, short for Cross-Origin Resource Sharing, the browser rule that stops a page on one address from calling a server on another unless that server says it is welcome), the <code>Invalid phone or password</code> you get from an account that has no profile row, and being thrown back to the login page when your token has run out. They are all in there.</p>
 <div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>Keep three terminal windows open the whole time, one for MySQL, one for the Django server, one for the Vite dev server, and never close them. Both servers watch your files and restart themselves when you save. Half of all beginner confusion is caused by editing code while the server that should be running it is not.</p></div></div>
@@ -1204,7 +1206,7 @@ PyJWT==2.10.1
 <p><strong>There is no logout endpoint.</strong> Pressing <strong>Log out</strong> throws the token away in your browser and nothing else. The server is never told. That token stays technically valid until it expires on its own. Good enough for a project on your own machine, not good enough for the real internet.</p>
 </li>
 <li>
-<p><strong>The Accounts page creates accounts but does not list them.</strong> Seeing who exists, changing somebody's role, or switching an account off is done from Django's own admin site at <code>http://127.0.0.1:8000/admin/</code>, which Django gives you for free and which you will meet later in the book.</p>
+<p><strong>The Accounts page creates accounts but does not list them.</strong> Seeing who exists, changing somebody's role, or switching an account off is done from Django's own admin site at <code>http://127.0.0.1:8001/admin/</code>, which Django gives you for free and which you will meet later in the book.</p>
 </li>
 </ul>
 <p>None of these are bugs to be fixed as you read. They are the edges of the project. Knowing where they are is what lets you build the rest with confidence.</p>
@@ -1437,7 +1439,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </
 </code></pre></div>
 
 <p>The prefix disappears and you are back on the system Python.</p>
-<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Forgetting to activate. You open a fresh terminal tomorrow, type <code>python manage.py runserver</code>, and get <code>ModuleNotFoundError: No module named 'django'</code>. Django is not missing. You are just standing outside the toolbox. Run <code>source .venv/bin/activate</code> and try again. This is the single most common confusion in the whole book, and the fix is always the same.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>Windows may refuse the activate script with a message about execution policies being disabled. Run <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> once, answer <code>Y</code>, and then activate again.</p></div></div>
+<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Forgetting to activate. You open a fresh terminal tomorrow, type <code>python manage.py runserver 8001</code>, and get <code>ModuleNotFoundError: No module named 'django'</code>. Django is not missing. You are just standing outside the toolbox. Run <code>source .venv/bin/activate</code> and try again. This is the single most common confusion in the whole book, and the fix is always the same.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>Windows may refuse the activate script with a message about execution policies being disabled. Run <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> once, answer <code>Y</code>, and then activate again.</p></div></div>
 <h4 id="the-venv-folder-must-never-be-committed">The .venv folder must never be committed</h4>
 <p>Git works by recording snapshots of your files in a <strong>repository</strong>, which is just the folder Git is watching plus its history. <code>.venv</code> holds hundreds of megabytes of downloaded code that anyone can recreate from <code>requirements.txt</code> in one command. It also contains absolute paths pointing at your own home folder, so it would not even work on someone else's machine.</p>
 <p>The project keeps a <code>.gitignore</code> at the top level, next to <code>backend</code> and <code>frontend</code>. A <strong>.gitignore</strong> is a plain text list of things Git should pretend it cannot see. Create it now at <code>lms/.gitignore</code> and put exactly this in it:</p>
@@ -1698,7 +1700,7 @@ django-admin<span class="w"> </span>startproject<span class="w"> </span>lms<span
 </code></pre></div>
 
 <p>That is the finished file. It is never edited. Note the error message Django wrote for you in the middle of it: <em>"Did you forget to activate a virtual environment?"</em> Django knows how often that happens too.</p>
-<p><code>execute_from_command_line(sys.argv)</code> is what turns <code>python manage.py runserver</code> into "run the development server" and <code>python manage.py migrate</code> into "apply database changes". Every <code>manage.py</code> command in this book goes through that one line.</p>
+<p><code>execute_from_command_line(sys.argv)</code> is what turns <code>python manage.py runserver 8001</code> into "run the development server" and <code>python manage.py migrate</code> into "apply database changes". Every <code>manage.py</code> command in this book goes through that one line.</p>
 <h4 id="lmsinitpy">lms/<strong>init</strong>.py</h4>
 <p>Empty. Zero bytes. Its only job is to tell Python "this folder is a package you can import from", which is what makes <code>lms.settings</code> a valid thing to write. <code>backend/__init__.py</code> and <code>backend/migrations/__init__.py</code> are empty for the same reason. Do not delete them.</p>
 <h4 id="lmssettingspy">lms/settings.py</h4>
@@ -1798,7 +1800,7 @@ django-admin<span class="w"> </span>startproject<span class="w"> </span>lms<span
 <h3 id="114-checkpoint-the-rocket-page">1.14 Checkpoint: the rocket page</h3>
 <p>Everything above was preparation. Now prove Django is alive.</p>
 <p>From <code>lms/backend</code>, with <code>(.venv)</code> on your prompt:</p>
-<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>runserver
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>runserver<span class="w"> </span>8001
 </code></pre></div>
 
 <p>The terminal prints something close to this and then appears to hang:</p>
@@ -1808,21 +1810,21 @@ Performing system checks...
 System check identified no issues (0 silenced).
 August 04, 2026 - 05:40:15
 Django version 5.2.7, using settings &#39;lms.settings&#39;
-Starting development server at http://127.0.0.1:8000/
+Starting development server at http://127.0.0.1:8001/
 Quit the server with CONTROL-C.
 </code></pre></div>
 
 <p>It has not hung. A server runs until you stop it, so it holds this terminal window for as long as it is up. The date line shows today's date on your machine.</p>
 <p>You will probably also see a warning in red about unapplied migrations. That is expected. The database has no tables yet, and <code>migrate</code> is the next chapter's job.</p>
-<p>Open a browser and go to <strong>http://127.0.0.1:8000/</strong>.</p>
+<p>Open a browser and go to <strong>http://127.0.0.1:8001/</strong>.</p>
 <p>You get a page with a green rocket taking off and the words "The install worked successfully! Congratulations!" That page only ever appears when Django is running, has valid settings, and has no URL configured for <code>/</code>. All three are true right now.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>The rocket page at http://127.0.0.1:8000/. If you see it, Python, pip, the virtual environment, Django and your project layout are all correct. Press <code>Ctrl</code> + <code>C</code> in the terminal to stop the server. It stops instantly and gives you your prompt back.</p></div></div>
-<p><code>127.0.0.1</code> is the address every computer uses for itself, also spelled <code>localhost</code>. <code>8000</code> is the <strong>port</strong>, a numbered door on that address. Django's development server picks 8000 by default. The React frontend will later sit on port 5180, set in <code>frontend/vite.config.js</code>, so the two can run side by side.</p>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>The rocket page at http://127.0.0.1:8001/. If you see it, Python, pip, the virtual environment, Django and your project layout are all correct. Press <code>Ctrl</code> + <code>C</code> in the terminal to stop the server. It stops instantly and gives you your prompt back.</p></div></div>
+<p><code>127.0.0.1</code> is the address every computer uses for itself, also spelled <code>localhost</code>. <code>8001</code> is the <strong>port</strong>, a numbered door on that address. Django's development server picks 8000 by default, but this project runs it on 8001, because that is the port <code>frontend/src/api.js</code> calls. The React frontend will later sit on port 5180, set in <code>frontend/vite.config.js</code>, so the two can run side by side.</p>
 <div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>If <code>runserver</code> dies with <code>pywatchman.SocketTimeout: timed out waiting for response</code>, Django's auto-reloader is trying to use Watchman and Watchman is not answering. Start it with <code>python manage.py runserver --noreload</code> (you then have to restart it yourself after editing Python files), or raise the timeout by setting <code>DJANGO_WATCHMAN_TIMEOUT=20</code> before the command.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Closing the terminal window instead of pressing <code>Ctrl</code> + <code>C</code>. On some systems the server keeps running in the background, and the next <code>runserver</code> fails with <code>Error: That port is already in use.</code> The cure is to find and stop the old one, or start the new one on another port with <code>python manage.py runserver 8001</code>.</p></div></div>
 <h3 id="115-about-the-frontend-folder">1.15 About the frontend folder</h3>
 <p><code>frontend</code> is still empty, and it stays that way for a few chapters. Vite creates the whole React project in one command when the time comes, and there is no point generating it before there is an API for it to call.</p>
 <p>For now, all you needed from this chapter was <code>node --version</code> and <code>npm --version</code> answering with real numbers, which you checked in section 1.6.</p>
-<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>There is a <code>backend/db.sqlite3</code> file in the published project. It is left over from an earlier setup, and since the finished settings point the database engine at MySQL, nothing reads it. The root <code>.gitignore</code> lists <code>db.sqlite3</code> so it does not get committed. Once the next chapter points Django at MySQL, you can delete yours.</p></div></div>
+<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>If you ever run this project on Django’s own default database, a <code>backend/db.sqlite3</code> file appears next to <code>manage.py</code>. The finished settings point the database engine at MySQL, so nothing reads it, and the root <code>.gitignore</code> lists <code>db.sqlite3</code> so it never reaches Git. If one shows up, you can delete it; the app will not notice.</p></div></div>
 <h3 id="what-you-have-now">What you have now</h3>
 <ul>
 <li>A terminal you can open, and the five commands needed to move around in it</li>
@@ -1832,7 +1834,7 @@ Quit the server with CONTROL-C.
 <li><code>backend/requirements.txt</code> with six pinned packages, all installed, <code>python -m django --version</code> answering <code>5.2.7</code></li>
 <li>A database called <code>lms_db</code> and a user <code>lms_user</code> that can reach it from <code>127.0.0.1</code> and nothing else</li>
 <li>A Django project called <code>lms</code> and a Django app called <code>backend</code>, living at <code>backend/lms/</code> and <code>backend/backend/</code></li>
-<li>A running development server showing the rocket page at http://127.0.0.1:8000/</li>
+<li>A running development server showing the rocket page at http://127.0.0.1:8001/</li>
 </ul>
 </section>
 
@@ -1851,7 +1853,7 @@ Quit the server with CONTROL-C.
       urls.py         &lt;-- also this chapter
 </code></pre></div>
 
-<p>By the end of it, <code>python manage.py runserver</code> will start a working Django server with no error text, connected to MySQL, answering in JSON (JSON is the plain-text format programs use to send data to each other), and willing to answer the React app running on a different port.</p>
+<p>By the end of it, <code>python manage.py runserver 8001</code> will start a working Django server with no error text, connected to MySQL, answering in JSON (JSON is the plain-text format programs use to send data to each other), and willing to answer the React app running on a different port.</p>
 <hr>
 <h3 id="21-what-settingspy-actually-is">2.1 What settings.py actually is</h3>
 <p>Django is a web framework. A framework is a big pile of code someone else wrote, which does the boring parts of a website for you: listening for requests, talking to a database, checking passwords. To do any of that it has to know a few things about <em>your</em> project. Which database? Which folder holds your code? Should error pages show the full crash report, or hide it?</p>
@@ -2106,7 +2108,7 @@ scheme host      port
 </code></pre></div>
 
 <p>Two addresses are the same origin only if all three match exactly. This rule is what stops a page on a random website from quietly calling your bank's API using the cookies in your browser and reading the answer.</p>
-<p>Now look at this project. Vite, the tool that serves the React app while you are working on it, runs at <code>http://localhost:5180</code>. Django runs at <code>http://127.0.0.1:8000</code>. Different host text, different port. Two different origins. So when the React page calls the API, the browser blocks JavaScript from reading the reply, unless Django says it is fine.</p>
+<p>Now look at this project. Vite, the tool that serves the React app while you are working on it, runs at <code>http://localhost:5180</code>. Django runs at <code>http://127.0.0.1:8001</code>. Different host text, different port. Two different origins. So when the React page calls the API, the browser blocks JavaScript from reading the reply, unless Django says it is fine.</p>
 <p>The way Django says it is fine is by putting a header on the response, <code>Access-Control-Allow-Origin</code>, naming the origin that is allowed. <code>django-cors-headers</code> is the library that adds that header, and <code>CORS_ALLOWED_ORIGINS</code> is the list it checks:</p>
 <div class="filebox" markdown="0">
 <div class="filetab">backend/lms/settings.py</div>
@@ -2149,9 +2151,9 @@ scheme host      port
 <div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Vite starts on a port that is not 5180, and suddenly every request in the browser fails. This happens when something else on your machine already holds 5180. Vite does not stop and complain, it takes the next free port and prints it. The line in your terminal reads <code>Local: http://localhost:5181/</code> instead of <code>5180</code>. The app loads, the login page draws fine, and then every single API call fails.</p>
 <p><strong>How to spot it.</strong> Two clues together are conclusive. First, the browser console shows a message containing the words <code>has been blocked by CORS policy</code> and names your origin. Second, and this is the giveaway, the same request works perfectly from a terminal:</p>
 <p><code>bash
-curl -i http://127.0.0.1:8000/api/teacher/</code></p>
+curl -i http://127.0.0.1:8001/api/teacher/</code></p>
 <p><code>curl</code> is a program that fetches a URL from the command line. It returns a normal reply here (a 401, since you sent no token, which still proves Django answered). <code>curl</code> is not a browser and does not enforce the same-origin rule, so it never cares about CORS. <strong>Backend fine in curl, broken in the browser</strong> is the signature of a CORS problem, every time. It is not a Django bug, not a broken URL, and not a login problem.</p>
-<p><strong>How to fix it.</strong> Either free port 5180 and restart <code>npm run dev</code> so Vite gets the port it asked for, or add the port Vite actually chose to <code>CORS_ALLOWED_ORIGINS</code>, both spellings, and restart Django. Changing <code>settings.py</code> needs a Django restart to take effect.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Writing an origin with a trailing slash or a path, like <code>'http://localhost:5180/'</code>. <code>django-cors-headers</code> checks this at startup and Django refuses to run, printing an error that contains <code>should not have path</code> and the id <code>corsheaders.E014</code>. An origin is scheme, host and port only. Nothing after the port.</p></div></div><div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>The frontend chooses its API address in one line, <code>frontend/src/api.js</code> line 8, which reads the environment variable <code>VITE_API_URL</code> and falls back to <code>http://127.0.0.1:8000/api</code>. If you ever move Django to a different port, that is the other end of the same wire.</p></div></div>
+<p><strong>How to fix it.</strong> Either free port 5180 and restart <code>npm run dev</code> so Vite gets the port it asked for, or add the port Vite actually chose to <code>CORS_ALLOWED_ORIGINS</code>, both spellings, and restart Django. Changing <code>settings.py</code> needs a Django restart to take effect.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Writing an origin with a trailing slash or a path, like <code>'http://localhost:5180/'</code>. <code>django-cors-headers</code> checks this at startup and Django refuses to run, printing an error that contains <code>should not have path</code> and the id <code>corsheaders.E014</code>. An origin is scheme, host and port only. Nothing after the port.</p></div></div><div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>The frontend chooses its API address in one line, <code>frontend/src/api.js</code> line 8, which reads the environment variable <code>VITE_API_URL</code> and falls back to <code>http://127.0.0.1:8001/api</code>. If you ever move Django to a different port, that is the other end of the same wire.</p></div></div>
 <hr>
 <h3 id="28-rest_framework-locked-by-default">2.8 REST_FRAMEWORK: locked by default</h3>
 <p>Django REST Framework, DRF for short, is the library that turns Django models into a JSON API. An API is a set of URLs that return data instead of web pages, meant to be read by another program rather than by a person. One of those URLs is called an <strong>endpoint</strong>.</p>
@@ -2319,7 +2321,7 @@ curl -i http://127.0.0.1:8000/api/teacher/</code></p>
 </div>
 
 <p><code>'default'</code> is the name of this connection. Django supports several at once, and <code>'default'</code> is the one everything uses unless told otherwise.</p>
-<p><code>'ENGINE'</code> is the translator. Django writes queries in a general way and the engine turns them into the dialect the actual database speaks. <code>django.db.backends.mysql</code> is the MySQL translator, and it is the reason <code>mysqlclient</code> is in <code>requirements.txt</code>. <code>startproject</code> writes <code>django.db.backends.sqlite3</code> here by default. That default is why a leftover <code>backend/db.sqlite3</code> file exists in this project. Nothing uses it, and the README says so.</p>
+<p><code>'ENGINE'</code> is the translator. Django writes queries in a general way and the engine turns them into the dialect the actual database speaks. <code>django.db.backends.mysql</code> is the MySQL translator, and it is the reason <code>mysqlclient</code> is in <code>requirements.txt</code>. <code>startproject</code> writes <code>django.db.backends.sqlite3</code> here by default, which is why a stray <code>backend/db.sqlite3</code> can appear if you run <code>migrate</code> before this block is edited. Once it says <code>mysql</code>, nothing reads that file.</p>
 <p>The other five entries introduce a pattern worth learning properly.</p>
 <p>An <strong>environment variable</strong> is a named value that belongs to your terminal session rather than to any file. Your operating system hands the set of them to every program you start. They are the standard way to give a program a secret without writing the secret down in a file that gets committed to Git along with the code.</p>
 <p><code>os.getenv('DB_PASSWORD', 'lms_user_pw')</code> means: look for an environment variable called <code>DB_PASSWORD</code>, and if there is not one, use <code>'lms_user_pw'</code>. The second argument is the fallback. So this project works with zero configuration if you set up the database exactly as the README describes, and works with a different password without editing a single line of Python.</p>
@@ -2373,7 +2375,7 @@ curl -i http://127.0.0.1:8000/api/teacher/</code></p>
 
 <p>To override any of them, set the variable in the same terminal before starting Django:</p>
 <div class="codehilite"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DB_PASSWORD</span><span class="o">=</span><span class="s1">&#39;my-real-password&#39;</span>
-python<span class="w"> </span>manage.py<span class="w"> </span>runserver
+python<span class="w"> </span>manage.py<span class="w"> </span>runserver<span class="w"> </span>8001
 </code></pre></div>
 
 <p>On Windows <code>cmd</code> that is <code>set DB_PASSWORD=my-real-password</code> instead.</p>
@@ -2613,7 +2615,7 @@ python<span class="w"> </span>manage.py<span class="w"> </span>runserver
 </div>
 
 <p><code>login/</code> in that file is reached at <code>/api/login/</code> in the browser. The prefix is added once, here, and every route in the app inherits it. Change <code>'api/'</code> to <code>'v1/'</code> in this one file and all twenty-two routes in <code>backend/urls.py</code> move at once. That file gets a chapter of its own later.</p>
-<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Leaving the trailing slash off a URL. Every path in this project ends with <code>/</code>. <code>http://127.0.0.1:8000/api/teacher</code> without the slash still works for a <code>GET</code> (the request a browser makes when it just fetches a page), because <code>CommonMiddleware</code> redirects it, but a <code>POST</code> (the request that sends data in) can lose its body in that redirect. Always include the trailing slash.</p></div></div>
+<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Leaving the trailing slash off a URL. Every path in this project ends with <code>/</code>. <code>http://127.0.0.1:8001/api/teacher</code> without the slash still works for a <code>GET</code> (the request a browser makes when it just fetches a page), because <code>CommonMiddleware</code> redirects it, but a <code>POST</code> (the request that sends data in) can lose its body in that redirect. Always include the trailing slash.</p></div></div>
 <hr>
 <h3 id="216-start-it-up">2.16 Start it up</h3>
 <p>Everything in this chapter is in place. Time to prove it.</p>
@@ -2626,7 +2628,7 @@ python<span class="w"> </span>manage.py<span class="w"> </span>runserver
 </code></pre></div>
 
 <p>That single line means a lot: <code>settings.py</code> parsed as valid Python, every app in <code>INSTALLED_APPS</code> was found and imported, the middleware paths all exist, and <code>django-cors-headers</code> approved every entry in <code>CORS_ALLOWED_ORIGINS</code>. Now start the server:</p>
-<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>runserver
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>runserver<span class="w"> </span>8001
 </code></pre></div>
 
 <div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>The terminal should print something very close to this, with today's date and no red text anywhere:</p>
@@ -2636,12 +2638,12 @@ Performing system checks...</p>
 <p>System check identified no issues (0 silenced).
 August 04, 2026 - 05:40:47
 Django version 5.2.7, using settings 'lms.settings'
-Starting development server at http://127.0.0.1:8000/
+Starting development server at http://127.0.0.1:8001/
 Quit the server with CONTROL-C.
 ```</p>
 <p>Check three things in that banner. The version says <strong>5.2.7</strong>, matching <code>requirements.txt</code>. The settings module says <strong><code>lms.settings</code></strong>, which is the file you just spent a chapter on. And the check line says <strong>no issues</strong>. The paragraph underneath about this being a development server is a normal warning, not an error, and it always appears.</p>
 <p>Remember section 2.13: that clock is UTC, so it will not match your wall clock unless your country happens to sit on UTC.</p></div></div>
-<p>Now open <strong>http://127.0.0.1:8000/api/teacher/</strong> in a browser. You should get a DRF page saying authentication credentials were not provided, with the status <strong>401 Unauthorized</strong>.</p>
+<p>Now open <strong>http://127.0.0.1:8001/api/teacher/</strong> in a browser. You should get a DRF page saying authentication credentials were not provided, with the status <strong>401 Unauthorized</strong>.</p>
 <figure class="shot" id="fig-ss-drf-browsable"><img src="images/ss-drf-browsable.png" alt="The DRF browsable API page at /api/teacher/, refusing an anonymous visitor with a 401"><figcaption><span class="fignum">Figure 2.1</span> The DRF browsable API page at /api/teacher/, refusing an anonymous visitor with a 401</figcaption></figure>
 <p>That is not a failure. It means the URL routing found the view and the view refused a visitor it could not identify. The class doing the refusing on this particular URL is <code>AdminWrites</code>, from <code>backend/permissions.py</code>, which <code>TeacherListCreateView</code> names itself; it requires a signed-in user before it looks at anything else. <code>DEFAULT_PERMISSION_CLASSES</code> from section 2.8 is the same idea applied to any view that does not name one.</p>
 <p>If you get a 404 instead, check <code>lms/urls.py</code>. If you get a 200 with a list of teachers, something is wrong with permissions: check that <code>REST_FRAMEWORK</code> is spelled correctly in <code>settings.py</code> and that the view still has its <code>permission_classes</code>.</p>
@@ -3853,7 +3855,7 @@ ls<span class="w"> </span>backend/
 <p>Break either rule and Django refuses to start, printing a system check error that names <code>list_editable</code> and tells you which rule you broke. That is a good error: it stops at boot rather than misbehaving later.</p>
 <p><code>search_fields = ['user__username', 'phone']</code> introduces the <strong>double underscore</strong>. <code>user__username</code> means "follow the <code>user</code> link, then look at the <code>username</code> field on the other side." A single underscore would be a field literally named <code>user_username</code>, which does not exist. Two underscores means "go through the relation." You will meet this notation everywhere in Django.</p>
 <p><code>list_filter = ['role']</code> gives a sidebar with Admin, Teacher and Student, so "show me every teacher account" is one click.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Start the server with <code>python manage.py runserver</code> and open http://127.0.0.1:8000/admin/. You should see a <strong>BACKEND</strong> section listing all nine models: Assignments, Courses, Enrollments, Lessons, Profiles, Results, Students, Submissions and Teachers. If a model is missing from that page, it is missing from <code>admin.py</code>.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Start the server with <code>python manage.py runserver 8001</code> and open http://127.0.0.1:8001/admin/. You should see a <strong>BACKEND</strong> section listing all nine models: Assignments, Courses, Enrollments, Lessons, Profiles, Results, Students, Submissions and Teachers. If a model is missing from that page, it is missing from <code>admin.py</code>.</p></div></div>
 <figure class="shot" id="fig-ss-django-admin"><img src="images/ss-django-admin.png" alt="The Django admin home page. Every model registered in admin.py appears under the BACKEND heading, alongside Django&#x27;s own Groups and Users."><figcaption><span class="fignum">Figure 3.1</span> The Django admin home page. Every model registered in admin.py appears under the BACKEND heading, alongside Django&#x27;s own Groups and Users.</figcaption></figure>
 <hr>
 <h3 id="createsuperuser-and-the-trap-that-catches-everybody">createsuperuser, and the trap that catches everybody</h3>
@@ -3871,11 +3873,11 @@ ls<span class="w"> </span>backend/
 <div class="codehilite"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>createsuperuser
 </code></pre></div>
 
-<p><strong>2. Give it a Profile by hand.</strong> Open http://127.0.0.1:8000/admin/backend/profile/add/. Pick your new user in the <strong>User</strong> dropdown, type a phone number, set <strong>Role</strong> to <strong>Admin</strong>, and press Save.</p>
+<p><strong>2. Give it a Profile by hand.</strong> Open http://127.0.0.1:8001/admin/backend/profile/add/. Pick your new user in the <strong>User</strong> dropdown, type a phone number, set <strong>Role</strong> to <strong>Admin</strong>, and press Save.</p>
 <figure class="shot" id="fig-ss-django-profile-add"><img src="images/ss-django-profile-add.png" alt="The Django admin &quot;Add profile&quot; form. Three fields: the User dropdown, the phone number you will log in with, and the Role dropdown showing Admin, Teacher and Student."><figcaption><span class="fignum">Figure 3.2</span> The Django admin &quot;Add profile&quot; form. Three fields: the User dropdown, the phone number you will log in with, and the Role dropdown showing Admin, Teacher and Student.</figcaption></figure>
 <p><strong>3. Log in to the React app</strong> at http://localhost:5180/login using that <strong>phone number</strong> and the password you set in step 1.</p>
 <p>That account is now an admin in the app, and the Accounts page is open to you, so every other account can be created from the app itself. You only ever do this once per database.</p>
-<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Typing your <strong>username</strong> into the React login form because that is what <code>createsuperuser</code> asked for. The form asks for a phone. The account is found through <code>Profile.phone</code> and only through <code>Profile.phone</code>. If you have no Profile row, no combination of characters will work.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>A superuser without a Profile is still treated as an admin by the permission code. <code>role_of()</code> in <code>backend/backend/permissions.py</code> returns <code>Profile.ADMIN</code> for any <code>user.is_superuser</code>, so the account is not powerless. The only thing missing is a phone number to log in with. That is what step 2 supplies.</p></div></div><div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>Forgotten which accounts exist? The Accounts page in the React app creates accounts but does not list them. http://127.0.0.1:8000/admin/backend/profile/ is where you see everyone, change a role, and search by username or phone.</p></div></div>
+<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Typing your <strong>username</strong> into the React login form because that is what <code>createsuperuser</code> asked for. The form asks for a phone. The account is found through <code>Profile.phone</code> and only through <code>Profile.phone</code>. If you have no Profile row, no combination of characters will work.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>A superuser without a Profile is still treated as an admin by the permission code. <code>role_of()</code> in <code>backend/backend/permissions.py</code> returns <code>Profile.ADMIN</code> for any <code>user.is_superuser</code>, so the account is not powerless. The only thing missing is a phone number to log in with. That is what step 2 supplies.</p></div></div><div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>Forgotten which accounts exist? The Accounts page in the React app creates accounts but does not list them. http://127.0.0.1:8001/admin/backend/profile/ is where you see everyone, change a role, and search by username or phone.</p></div></div>
 <hr>
 <h3 id="try-the-models-from-the-shell">Try the models from the shell</h3>
 <p>Before moving on, prove to yourself that a model really is a table. Django gives you a Python prompt with everything already loaded.</p>
@@ -3892,7 +3894,7 @@ ls<span class="w"> </span>backend/
 
 <p><code>Teacher.objects.create(...)</code> builds the object and saves the row in one step. <code>t.id</code> shows the number the database gave it. <code>Teacher.objects.all()</code> returns a <strong>QuerySet</strong>, which is Django's word for a list of rows, and it prints each row using the <code>__str__</code> you wrote, so you should see <code>&lt;QuerySet [&lt;Teacher: Md. Rahim - Physics&gt;]&gt;</code>.</p>
 <p>Type <code>exit()</code> to leave.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Refresh http://127.0.0.1:8000/admin/backend/teacher/. The teacher you created in the shell is in the list, with columns for id, name, email, subject and is active, and a filter sidebar on the right. The same row exists in three places now: in MySQL, in the shell, and on that page. That is one table, seen three ways.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Refresh http://127.0.0.1:8001/admin/backend/teacher/. The teacher you created in the shell is in the list, with columns for id, name, email, subject and is active, and a filter sidebar on the right. The same row exists in three places now: in MySQL, in the shell, and on that page. That is one table, seen three ways.</p></div></div>
 <h3 id="what-you-have-now">What you have now</h3>
 <ul>
 <li>A <code>models.py</code> with nine models: <code>Profile</code>, <code>Teacher</code>, <code>Student</code>, <code>Course</code>, <code>Enrollment</code>, <code>Lesson</code>, <code>Assignment</code>, <code>Submission</code> and <code>Results</code>.</li>
@@ -4982,7 +4984,7 @@ l.errors
 <div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>JSON (say it "jay-son") is just text in a shape both Python and JavaScript understand. <code>{"id": 1, "name": "Ada"}</code> is JSON. Django speaks Python dictionaries, the browser speaks JavaScript objects, and JSON is the common written form they pass back and forth.</p></div></div>
 <p>In plain Django a view is often a function. In Django REST Framework (DRF, the library that turns Django into an API toolkit) a view is normally a <strong>class</strong>. A class is a template with named pieces inside it. You will see classes such as <code>TeacherListCreateView</code> below. The class holds three or four settings, and DRF supplies all of the machinery around them.</p>
 <h3 id="where-the-urls-live-two-files-not-one">Where the URLs live: two files, not one</h3>
-<p>A <strong>URL</strong> is a web address: <code>http://127.0.0.1:8000/api/teacher/</code>. A <strong>URL pattern</strong> is a rule that says "an address that looks like <em>this</em> runs <em>that</em> view".</p>
+<p>A <strong>URL</strong> is a web address: <code>http://127.0.0.1:8001/api/teacher/</code>. A <strong>URL pattern</strong> is a rule that says "an address that looks like <em>this</em> runs <em>that</em> view".</p>
 <p>Django starts every request at one file, named by <code>ROOT_URLCONF</code> in the settings. Look at <code>backend/lms/settings.py</code>:</p>
 <div class="filebox" markdown="0">
 <div class="filetab">backend/lms/settings.py</div>
@@ -5031,7 +5033,7 @@ l.errors
 <tbody>
 <tr>
 <td>1</td>
-<td>Browser asks for <code>http://127.0.0.1:8000/api/teacher/5/</code></td>
+<td>Browser asks for <code>http://127.0.0.1:8001/api/teacher/5/</code></td>
 </tr>
 <tr>
 <td>2</td>
@@ -5273,7 +5275,7 @@ l.errors
 <p>The name is not free choice. DRF's detail views look for a URL keyword called <code>pk</code>, because they carry <code>lookup_field = 'pk'</code> by default. So <code>/api/teacher/5/</code> sets <code>pk = 5</code>, DRF runs the equivalent of <code>Teacher.objects.all().get(pk=5)</code>, and returns that row.</p>
 <div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Writing <code>path('teacher/&lt;int:id&gt;/', ...)</code>. The URL still matches, and then the view raises an error about an unexpected keyword argument <code>id</code>, or a missing <code>pk</code>. The word has to be <code>pk</code>.</p></div></div>
 <p>Because <code>int</code> only matches digits, <code>/api/teacher/abc/</code> matches no pattern at all and Django answers <code>404</code> before your view is ever reached. You get that check for free.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Save both files and start the server from the <code>backend</code> folder with <code>python manage.py runserver</code>. In another terminal run <code>curl -i http://127.0.0.1:8000/api/teacher/</code>. You should see <code>HTTP/1.1 401 Unauthorized</code> and the body <code>{"detail":"Authentication credentials were not provided."}</code>. A 401 is a success here. It proves the URL matched, the view ran, and the permission gate stopped you. A <code>404</code> at this point means the pattern is wrong or the server did not reload.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Save both files and start the server from the <code>backend</code> folder with <code>python manage.py runserver 8001</code>. In another terminal run <code>curl -i http://127.0.0.1:8001/api/teacher/</code>. You should see <code>HTTP/1.1 401 Unauthorized</code> and the body <code>{"detail":"Authentication credentials were not provided."}</code>. A 401 is a success here. It proves the URL matched, the view ran, and the permission gate stopped you. A <code>404</code> at this point means the pattern is wrong or the server did not reload.</p></div></div>
 <h4 id="the-other-seven-resources">The other seven resources</h4>
 <p>The remaining fourteen classes in <code>views.py</code> are the same three settings with different names. Rather than print them all, here is the whole set as a table. Every one of these has <code>queryset = &lt;Model&gt;.objects.all()</code> and <code>serializer_class = &lt;Model&gt;Serializer</code>; only the permission class varies.</p>
 <table>
@@ -5832,7 +5834,7 @@ l.errors
 <p>The view is short because the serializer does the hard part. <code>PasswordResetConfirmSerializer.validate()</code> checks the two new passwords match, decodes the <code>uid</code>, loads the user with <code>User.objects.get(pk=uid, is_active=True)</code>, checks the token with <code>default_token_generator.check_token()</code>, runs Django's password rules, and then puts the user object into <code>attrs["user"]</code>. By the time the view runs, <code>validated_data["user"]</code> is a verified account. A bad or expired link never reaches this code; it comes back as a <code>400</code> saying "Invalid reset link." or "Invalid or expired reset token."</p>
 <p><code>blacklist_user_tokens(user)</code> appears again, for the same reason and with the same limitation.</p>
 <h3 id="every-endpoint-in-one-table">Every endpoint in one table</h3>
-<p>Base URL: <code>http://127.0.0.1:8000/api</code>. This table is read off <code>backend/backend/urls.py</code> and <code>backend/backend/permissions.py</code>.</p>
+<p>Base URL: <code>http://127.0.0.1:8001/api</code>. This table is read off <code>backend/backend/urls.py</code> and <code>backend/backend/permissions.py</code>.</p>
 <table>
 <thead>
 <tr>
@@ -5949,12 +5951,12 @@ l.errors
 <h3 id="trying-it-without-the-frontend">Trying it without the frontend</h3>
 <p>You do not need React to use this API. <code>curl</code> is a command line program that sends an HTTP request and prints the answer, and it ships with macOS and most Linux systems. Every command below is real and runnable.</p>
 <p>Start the server first, from the <code>backend</code> folder:</p>
-<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>runserver
+<div class="codehilite"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>runserver<span class="w"> </span>8001
 </code></pre></div>
 
-<p>That serves the API on port 8000. Leave that terminal alone and open a second one.</p>
+<p>That serves the API on port 8001. Leave that terminal alone and open a second one.</p>
 <p><strong>Step 1: ask for teachers with no token.</strong></p>
-<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-i<span class="w"> </span>http://127.0.0.1:8000/api/teacher/
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-i<span class="w"> </span>http://127.0.0.1:8001/api/teacher/
 </code></pre></div>
 
 <p><code>-i</code> prints the status line and headers as well as the body. You get something like this (a few headers trimmed):</p>
@@ -5966,15 +5968,15 @@ Content-Type: application/json
 </code></pre></div>
 
 <p><strong>Step 2: log in.</strong> Use the phone number of the admin account you created in the setup chapter. <code>01711111111</code> below is a stand-in; type your own.</p>
-<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/api/login/<span class="w"> </span><span class="se">\</span>
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8001/api/login/<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;phone&quot;: &quot;01711111111&quot;, &quot;password&quot;: &quot;your-password&quot;}&#39;</span>
 </code></pre></div>
 
 <p><code>-X POST</code> sets the method. <code>-H</code> adds a <strong>header</strong>, which is an extra line of information travelling alongside the request, and <code>Content-Type: application/json</code> tells Django the body is JSON rather than form data. <code>-d</code> is the body itself. The single quotes around the JSON keep your shell from mangling the double quotes inside.</p>
-<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>Pipe any of these through <code>python3 -m json.tool</code> to get indented, readable JSON instead of one long line: <code>curl -s http://127.0.0.1:8000/api/teacher/ | python3 -m json.tool</code>. The <code>-s</code> turns off curl's progress meter, which would otherwise mix into the output.</p></div></div>
+<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>Pipe any of these through <code>python3 -m json.tool</code> to get indented, readable JSON instead of one long line: <code>curl -s http://127.0.0.1:8001/api/teacher/ | python3 -m json.tool</code>. The <code>-s</code> turns off curl's progress meter, which would otherwise mix into the output.</p></div></div>
 <p><strong>Step 3: capture the access token in a shell variable.</strong> A shell variable is a name your terminal remembers for the rest of the session, so you do not have to paste a 300-character string by hand:</p>
-<div class="codehilite"><pre><span></span><code><span class="nv">TOKEN</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/api/login/<span class="w"> </span><span class="se">\</span>
+<div class="codehilite"><pre><span></span><code><span class="nv">TOKEN</span><span class="o">=</span><span class="k">$(</span>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8001/api/login/<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;phone&quot;: &quot;01711111111&quot;, &quot;password&quot;: &quot;your-password&quot;}&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import sys, json; print(json.load(sys.stdin)[&#39;tokens&#39;][&#39;access&#39;])&quot;</span><span class="k">)</span>
@@ -5987,14 +5989,14 @@ Content-Type: application/json
 
 <p>You should see a long string in three parts separated by dots, beginning <code>eyJ</code>.</p>
 <p><strong>Step 4: ask for teachers again, this time with the token.</strong></p>
-<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://127.0.0.1:8000/api/teacher/<span class="w"> </span><span class="se">\</span>
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://127.0.0.1:8001/api/teacher/<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>python3<span class="w"> </span>-m<span class="w"> </span>json.tool
 </code></pre></div>
 
 <p>The header format is exactly <code>Authorization: Bearer &lt;token&gt;</code>, one space between the word <code>Bearer</code> and the token. <code>Bearer</code> comes from <code>AUTH_HEADER_TYPES</code> in <code>settings.py</code>.</p>
 <div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>This should print a JSON array, <code>[</code> on the first line, one object per teacher, <code>]</code> at the end. An empty database gives <code>[]</code>, which still counts as success. Note there is no <code>count</code> or <code>results</code> wrapper. Pagination, which is the practice of returning long lists a page at a time, is not configured on this project, so list endpoints return the whole array in one go, and the React code does <code>data.map(...)</code> rather than <code>data.results.map(...)</code>.</p></div></div>
 <p><strong>Step 5: create a teacher.</strong></p>
-<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/api/teacher/<span class="w"> </span><span class="se">\</span>
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8001/api/teacher/<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;name&quot;: &quot;Ada Lovelace&quot;, &quot;email&quot;: &quot;ada@example.com&quot;, &quot;subject&quot;: &quot;Mathematics&quot;, &quot;is_active&quot;: true}&#39;</span>
@@ -6002,14 +6004,14 @@ Content-Type: application/json
 
 <p>The answer is <code>201</code> and the created row, including the <code>id</code> the database assigned. Those four field names come from <code>TeacherSerializer</code>, which lists <code>['id', 'name', 'email', 'subject', 'is_active']</code>. <code>id</code> is read-only, so sending one is pointless.</p>
 <p><strong>Step 6: read one, change it, delete it.</strong> Use the <code>id</code> you just got back, say <code>1</code>:</p>
-<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://127.0.0.1:8000/api/teacher/1/<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>-s<span class="w"> </span>http://127.0.0.1:8001/api/teacher/1/<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
 
-curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span>http://127.0.0.1:8000/api/teacher/1/<span class="w"> </span><span class="se">\</span>
+curl<span class="w"> </span>-s<span class="w"> </span>-X<span class="w"> </span>PATCH<span class="w"> </span>http://127.0.0.1:8001/api/teacher/1/<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;subject&quot;: &quot;Computing&quot;}&#39;</span>
 
-curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span>http://127.0.0.1:8000/api/teacher/1/<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
+curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span>http://127.0.0.1:8001/api/teacher/1/<span class="w"> </span>-H<span class="w"> </span><span class="s2">&quot;Authorization: Bearer </span><span class="nv">$TOKEN</span><span class="s2">&quot;</span>
 </code></pre></div>
 
 <p>The <code>PATCH</code> sends one field and leaves the rest alone. The <code>DELETE</code> answers <code>HTTP/1.1 204 No Content</code> with an empty body, which is why <code>frontend/src/api.js</code> has a special case returning <code>null</code> for status 204.</p>
@@ -6017,17 +6019,17 @@ curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>
 <h3 id="the-browsable-api-in-a-browser">The browsable API in a browser</h3>
 <p>DRF gives every endpoint a second face: as well as JSON, it can render a web page. When a request arrives from a browser, DRF notices that the browser prefers HTML and renders the response as a styled page instead of raw JSON, with the endpoint's name at the top, the response body in the middle, and a form at the bottom for sending a <code>POST</code>.</p>
 <p>Visit this in any browser:</p>
-<div class="codehilite"><pre><span></span><code>http://127.0.0.1:8000/api/teacher/
+<div class="codehilite"><pre><span></span><code>http://127.0.0.1:8001/api/teacher/
 </code></pre></div>
 
 <p class="figref">See Figure 2.1.</p>
 <div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p><code>REST_FRAMEWORK</code> in <code>settings.py</code> lists only <code>JWTAuthentication</code> under <code>DEFAULT_AUTHENTICATION_CLASSES</code>, and does not list <code>SessionAuthentication</code>. That means a plain browser visit carries no credentials this API recognises, even if you are logged into Django admin in another tab. You will see the browsable page rendering <code>{"detail": "Authentication credentials were not provided."}</code> with a <code>401</code>. To see real rows in the browser you need the <code>Authorization: Bearer ...</code> header attached, which a header-setting browser extension can do. From the terminal, <code>curl</code> remains the simpler route.</p></div></div>
 <p>Add <code>?format=json</code> to any endpoint to skip the HTML page and get the raw body, which is exactly the bytes the React app receives:</p>
-<div class="codehilite"><pre><span></span><code>http://127.0.0.1:8000/api/teacher/?format=json
+<div class="codehilite"><pre><span></span><code>http://127.0.0.1:8001/api/teacher/?format=json
 </code></pre></div>
 
 <p class="figref">See Figure 4.1.</p>
-<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>The quickest way to fill the database with something to look at is not the API at all. Django admin at <code>http://127.0.0.1:8000/admin/</code> has every model registered in <code>backend/backend/admin.py</code>, so you can add a few teachers and courses by clicking, then come back and <code>curl</code> the list to see them.</p></div></div>
+<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>The quickest way to fill the database with something to look at is not the API at all. Django admin at <code>http://127.0.0.1:8001/admin/</code> has every model registered in <code>backend/backend/admin.py</code>, so you can add a few teachers and courses by clicking, then come back and <code>curl</code> the list to see them.</p></div></div>
 <h3 id="what-you-have-now">What you have now</h3>
 <ul>
 <li>A working API. Twenty-two URL patterns under <code>/api/</code>, all reachable, all answering real requests.</li>
@@ -6238,7 +6240,7 @@ curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>
 <div class="codehilite"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>migrate
 </code></pre></div>
 
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Run <code>python manage.py showmigrations backend</code>. You should see <code>[X] 0003_profile_role</code> and <code>[X] 0004_existing_accounts_become_admins</code>, both with an X meaning applied. Then open http://127.0.0.1:8000/admin/backend/profile/ and confirm your own account now says <strong>Admin</strong> in the Role column.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>This "promote everyone who already existed" migration is a one-time kindness for accounts created before roles were a thing. Accounts created after it get whatever role the admin picked, and <code>student</code> if nobody picked.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Run <code>python manage.py showmigrations backend</code>. You should see <code>[X] 0003_profile_role</code> and <code>[X] 0004_existing_accounts_become_admins</code>, both with an X meaning applied. Then open http://127.0.0.1:8001/admin/backend/profile/ and confirm your own account now says <strong>Admin</strong> in the Role column.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>This "promote everyone who already existed" migration is a one-time kindness for accounts created before roles were a thing. Accounts created after it get whatever role the admin picked, and <code>student</code> if nobody picked.</p></div></div>
 <h4 id="where-a-role-gets-set">Where a role gets set</h4>
 <p>There are exactly two places.</p>
 <p><strong>When an admin creates the account.</strong> <code>RegisterSerializer</code> in <code>backend/backend/serializers.py</code> accepts a <code>role</code>. (A <strong>serializer</strong> is the DRF object that checks incoming JSON and turns it into database rows, and turns rows back into JSON on the way out.)</p>
@@ -6430,7 +6432,7 @@ curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>
 </ul>
 <p>The second failure is annoying. The first is a breach. When you cannot tell, hand out the <strong>least privilege</strong> and let the human complain. A permission bug that blocks a legitimate user gets reported within the hour. A permission bug that lets the wrong person in gets reported never.</p>
 <p>The third option, raising an exception, is worse than both. A crash in a permission check is a 500 error (the status code meaning "the server itself broke"), and a 500 is exactly the sort of thing a developer "fixes" at 2am by wrapping it in a <code>try/except</code> that returns <code>True</code>.</p>
-<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Running <code>createsuperuser</code> and then trying to log into the React app with it. It will not work, and the error will say <code>Invalid phone or password</code>. Login looks accounts up by <code>Profile.phone</code>, and <code>createsuperuser</code> makes no Profile, so there is no phone number to type. That account can reach http://127.0.0.1:8000/admin/ and nothing else. The fix is in the README: create the superuser, then open http://127.0.0.1:8000/admin/backend/profile/add/, pick that user, give it a phone number, set the role to <strong>Admin</strong>, and save. <code>role_of()</code> already treats a superuser as an admin. The missing piece is only the phone number to log in with.</p></div></div>
+<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Running <code>createsuperuser</code> and then trying to log into the React app with it. It will not work, and the error will say <code>Invalid phone or password</code>. Login looks accounts up by <code>Profile.phone</code>, and <code>createsuperuser</code> makes no Profile, so there is no phone number to type. That account can reach http://127.0.0.1:8001/admin/ and nothing else. The fix is in the README: create the superuser, then open http://127.0.0.1:8001/admin/backend/profile/add/, pick that user, give it a phone number, set the role to <strong>Admin</strong>, and save. <code>role_of()</code> already treats a superuser as an admin. The missing piece is only the phone number to log in with.</p></div></div>
 <hr>
 <h3 id="65-safe_methods-reading-is-open">6.5 SAFE_METHODS: reading is open</h3>
 <p>Every HTTP request carries a <strong>method</strong>, a verb saying what kind of thing it is:</p>
@@ -7187,13 +7189,13 @@ curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>
 <div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>To have two roles signed in at once while you test, open the app normally in one window and in a private or incognito window in the other. Each window has its own <code>localStorage</code> (the small store in the browser where this app keeps the token), so each holds its own token. Logging out of one does not touch the other.</p></div></div>
 <hr>
 <h3 id="614-hands-on-get-yourself-a-403">6.14 Hands on: get yourself a 403</h3>
-<p>Time to prove the server, not the buttons, is doing the work. You need three things running: MySQL, <code>python manage.py runserver</code> in <code>backend</code>, and <code>npm run dev</code> in <code>frontend</code>.</p>
+<p>Time to prove the server, not the buttons, is doing the work. You need three things running: MySQL, <code>python manage.py runserver 8001</code> in <code>backend</code>, and <code>npm run dev</code> in <code>frontend</code>.</p>
 <p><strong>Step 1. Make a student account.</strong> Log in as an admin, open http://localhost:5180/accounts, and fill the form in. Pick <strong>Student</strong> in the Role dropdown. Note the phone number you typed, because that is what the new person logs in with, not the username.</p>
 <p><strong>Step 2. Log in as that student.</strong> Log out, then log in at http://localhost:5180/login with the student's phone number. The sidebar has no Accounts link and the badge next to the username reads <strong>Student</strong>.</p>
 <p><strong>Step 3. Find a teacher to aim at.</strong> Open the Teachers page and note the number in the ID column of any row. Say it is <code>1</code>.</p>
 <p><strong>Step 4. Open the browser console.</strong> Press F12, or right-click the page and choose Inspect, then pick the Console tab. This is a place to type JavaScript that runs inside the page you are looking at. It has the page's <code>localStorage</code>, so it has the student's token.</p>
 <p><strong>Step 5. Write the delete by hand.</strong> No button is involved. This is a raw request, exactly the kind a determined person would send:</p>
-<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s2">&quot;http://127.0.0.1:8000/api/teacher/1/&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s2">&quot;http://127.0.0.1:8001/api/teacher/1/&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nx">method</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;DELETE&quot;</span><span class="p">,</span>
 <span class="w">  </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">Authorization</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Bearer &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">localStorage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="s2">&quot;lms_access_token&quot;</span><span class="p">),</span>
@@ -7224,7 +7226,7 @@ curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>
 <p>Refresh the Teachers page. Teacher 1 is still there.</p>
 <div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>You just saw the entire chapter work end to end. The request was well-formed. The token was real and valid. The account was genuinely signed in. <code>AdminWrites.has_permission</code> ran, <code>role_of</code> returned <code>"student"</code>, <code>"student"</code> was not in <code>(Profile.ADMIN,)</code>, the method was not in <code>SAFE_METHODS</code>, and the function returned <code>False</code>. <code>TeacherRetrieveUpdateDestroyAPIView</code> never ran. No SQL <code>DELETE</code> was ever sent. And the sentence in the console is the <code>message</code> attribute you typed into <code>permissions.py</code>.</p></div></div>
 <p>Now try the same call against something a student <em>may</em> do:</p>
-<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s2">&quot;http://127.0.0.1:8000/api/teacher/&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
+<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="s2">&quot;http://127.0.0.1:8001/api/teacher/&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nx">headers</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">Authorization</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Bearer &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">localStorage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="s2">&quot;lms_access_token&quot;</span><span class="p">),</span>
 <span class="w">  </span><span class="p">},</span>
@@ -7285,7 +7287,7 @@ curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>
 <p>You describe. React makes reality match the description.</p>
 <p>So when a teacher is added, you do not add a table row. You add the teacher to a list of data, and you tell React the data changed. React re-runs your description, notices there is one more row in it than on screen, and inserts exactly one <code>&lt;tr&gt;</code>. The "no teachers yet" message disappears on its own, because your description says that message only appears when the list is empty, and the list is no longer empty.</p>
 <p>A <strong>component</strong> is one of these descriptions, packaged as a function. <code>Sidebar</code> is a component. <code>Teachers</code> is a component. A component is a plain JavaScript function that returns a description of some screen. Components can use other components inside them, which is how a whole app gets built out of small pieces.</p>
-<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>React does not talk to your database and does not know Django exists. It draws screens. When it needs data, it asks the API over HTTP, exactly the way the browser address bar did in the last chapter. The two halves of this project only ever meet at <code>http://127.0.0.1:8000/api/...</code>, which is the address written into <code>frontend/src/api.js</code>.</p></div></div>
+<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>React does not talk to your database and does not know Django exists. It draws screens. When it needs data, it asks the API over HTTP, exactly the way the browser address bar did in the last chapter. The two halves of this project only ever meet at <code>http://127.0.0.1:8001/api/...</code>, which is the address written into <code>frontend/src/api.js</code>.</p></div></div>
 <h3 id="what-vite-is-and-why-it-is-not-part-of-react">What Vite is, and why it is not part of React</h3>
 <p>React is a library. It is JavaScript code you import. It does not run anything, it does not open a browser, and it does not serve files over a network.</p>
 <p>You still need something to:</p>
@@ -7515,7 +7517,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 </tbody>
 </table>
 <div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Running <code>npm dev</code> instead of <code>npm run dev</code>. npm has a handful of built-in commands (<code>install</code>, <code>start</code>, <code>test</code>) that work without <code>run</code>. Your own scripts need <code>run</code>. When in doubt, type <code>npm run</code> with nothing after it and npm lists every available script.</p></div></div>
-<p><code>npm run dev</code> is a foreground process, which means it keeps hold of the terminal instead of giving your prompt back. That is correct behaviour. It has to keep running so it can watch your files. You need <strong>two terminals open</strong> while working on this project: one running Django on port 8000, one running Vite on port 5180.</p>
+<p><code>npm run dev</code> is a foreground process, which means it keeps hold of the terminal instead of giving your prompt back. That is correct behaviour. It has to keep running so it can watch your files. You need <strong>two terminals open</strong> while working on this project: one running Django on port 8001, one running Vite on port 5180.</p>
 <h3 id="viteconfigjs">vite.config.js</h3>
 <p>The generator wrote a small <code>vite.config.js</code>. This project's version has one thing added and comments explaining it. Here it is exactly as it appears in the repo:</p>
 <div class="filebox" markdown="0">
@@ -7573,7 +7575,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 
 </div>
 
-<p>CORS is short for Cross-Origin Resource Sharing. It is the browser rule that stops a page on one origin from reading data from another origin unless that other server says it is allowed. Your React page sits on port 5180 and your Django API sits on port 8000, so they are different origins, and Django has to say yes.</p>
+<p>CORS is short for Cross-Origin Resource Sharing. It is the browser rule that stops a page on one origin from reading data from another origin unless that other server says it is allowed. Your React page sits on port 5180 and your Django API sits on port 8001, so they are different origins, and Django has to say yes.</p>
 <p>Both ports are listed, and both spellings of "this machine" are listed, because <code>localhost</code> and <code>127.0.0.1</code> count as different origins to a browser even though they point at the same place.</p>
 <div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Changing the port in <code>vite.config.js</code> and forgetting <code>CORS_ALLOWED_ORIGINS</code>. The app loads fine, the login page appears, and then every API call fails with a CORS error in the browser console while Django's terminal shows nothing wrong. If you move off 5180, add the new origin to that list in <code>settings.py</code> and restart the Django server.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>If port 5180 happens to be in use, Vite does not crash. It prints <code>Port 5180 is in use, trying another one...</code>, takes the next free port, and shows you the real address. Always read the address Vite prints rather than assuming. If it did pick a different port, your API calls will hit the CORS wall described above.</p></div></div>
 <h3 id="indexhtml-and-the-idea-of-a-single-page-app">index.html and the idea of a single page app</h3>
@@ -7974,7 +7976,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 ```</p>
 <p>Your version number and timing will differ. What matters is the port: it must say <strong>5180</strong>. Open that address in a browser. At this stage you will see whatever the Vite starter page shows, or a blank white page if you have already emptied <code>App.jsx</code>. Either is correct. A blank page is not a failure, it means React mounted and had nothing to draw.</p></div></div>
 <p>To be sure React really is running rather than showing a cached file, open the browser developer tools with F12, go to the Elements tab, and expand <code>&lt;div id="root"&gt;</code>. If there is anything inside it, React put it there, because <code>index.html</code> ships that div empty.</p>
-<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>Leave <code>npm run dev</code> running in its own terminal for the rest of the book, and leave <code>python manage.py runserver</code> running in another. Two terminals, two servers, all the time. Every "why is nothing loading" moment in the coming chapters is one of those two having been stopped.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Running <code>npm run dev</code> from the wrong folder. If you are in <code>lms</code> rather than <code>lms/frontend</code>, npm stops with <code>npm error enoent Could not read package.json</code>. If you are in <code>lms/backend</code>, the same thing happens. Run <code>cd frontend</code> first, and check where you are with <code>pwd</code>.</p></div></div>
+<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>Leave <code>npm run dev</code> running in its own terminal for the rest of the book, and leave <code>python manage.py runserver 8001</code> running in another. Two terminals, two servers, all the time. Every "why is nothing loading" moment in the coming chapters is one of those two having been stopped.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Running <code>npm run dev</code> from the wrong folder. If you are in <code>lms</code> rather than <code>lms/frontend</code>, npm stops with <code>npm error enoent Could not read package.json</code>. If you are in <code>lms/backend</code>, the same thing happens. Run <code>cd frontend</code> first, and check where you are with <code>pwd</code>.</p></div></div>
 <p>Stop the server with <code>Ctrl + C</code> when you are done. The terminal returns to a normal prompt.</p>
 <h3 id="what-you-have-now">What you have now</h3>
 <ul>
@@ -7998,7 +8000,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 <p>By the end of this chapter you will have written <code>frontend/src/api.js</code> and <code>frontend/src/flash.js</code> from an empty file to the finished thing.</p>
 <div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>In this book, when a code block starts with a comment like <code>// frontend/src/api.js</code>, that line is a signpost telling you which file the code belongs to. It is not a line you type, and it is not in the real file. Everything below that first comment line is the real file's content, character for character.</p></div></div>
 <h3 id="why-every-network-call-lives-in-one-file">Why every network call lives in one file</h3>
-<p>A <strong>network call</strong> is when your browser asks another computer for something. The browser sends a request over the internet (or over your own machine, in our case) and gets an answer back. The React app runs at <code>http://localhost:5180</code>. Django runs at <code>http://127.0.0.1:8000</code>. They are two separate programs. The only way the React app can see a teacher row is to ask Django for it.</p>
+<p>A <strong>network call</strong> is when your browser asks another computer for something. The browser sends a request over the internet (or over your own machine, in our case) and gets an answer back. The React app runs at <code>http://localhost:5180</code>. Django runs at <code>http://127.0.0.1:8001</code>. They are two separate programs. The only way the React app can see a teacher row is to ask Django for it.</p>
 <p>An <strong>endpoint</strong> is one address on the server that does one job. <code>/api/teacher/</code> is an endpoint that lists teachers or adds one. <code>/api/login/</code> is an endpoint that checks a password. Django's <code>backend/backend/urls.py</code> is the list of every endpoint this project has.</p>
 <p>The browser has a built-in function for asking, called <code>fetch</code>. You could call <code>fetch</code> directly inside every page. Eight resource pages, four operations each, would be thirty-two places where you write out the server address, attach the login token, check whether the answer was an error, and turn the error into something a human can read.</p>
 <p>Thirty-two copies of the same four steps is thirty-two chances to get one of them slightly wrong. So all of it goes in one file. Pages then call things like <code>teachersApi.list()</code> and never think about tokens or headers at all.</p>
@@ -8032,7 +8034,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 <div class="filetab">frontend/src/api.js</div>
 
 
-<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">BASE_URL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">import</span><span class="p">.</span><span class="nx">meta</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">VITE_API_URL</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;http://127.0.0.1:8000/api&quot;</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">BASE_URL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">import</span><span class="p">.</span><span class="nx">meta</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">VITE_API_URL</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;http://127.0.0.1:8001/api&quot;</span><span class="p">;</span>
 </code></pre></div>
 
 
@@ -8042,7 +8044,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 <p>Three new things there.</p>
 <p><strong><code>import.meta.env</code></strong> is Vite's box of <strong>environment variables</strong>. An environment variable is a setting that comes from outside the code: from a file on disk or from the shell that started the program. The point is that you can change the setting without editing and re-committing the source.</p>
 <p><strong><code>VITE_API_URL</code></strong> is the name of one such setting. Vite has a safety rule: only variables whose names begin with <code>VITE_</code> are handed to the browser. Everything else stays on your machine. That rule exists because anything the browser can see, your users can see. A database password named <code>DB_PASSWORD</code> would never reach the browser. A public API address named <code>VITE_API_URL</code> is fine.</p>
-<p><strong><code>??</code></strong> is the <strong>nullish coalescing operator</strong>. <code>a ?? b</code> means "use <code>a</code>, unless <code>a</code> is missing, in which case use <code>b</code>." So: use <code>VITE_API_URL</code> if somebody set one, otherwise fall back to <code>http://127.0.0.1:8000/api</code>. Since you are running Django locally, nobody has to set anything and the fallback just works.</p>
+<p><strong><code>??</code></strong> is the <strong>nullish coalescing operator</strong>. <code>a ?? b</code> means "use <code>a</code>, unless <code>a</code> is missing, in which case use <code>b</code>." So: use <code>VITE_API_URL</code> if somebody set one, otherwise fall back to <code>http://127.0.0.1:8001/api</code>. Since you are running Django locally, nobody has to set anything and the fallback just works.</p>
 <p>That fallback ends in <code>/api</code> because <code>backend/lms/urls.py</code> mounts every endpoint under that prefix:</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># backend/lms/urls.py  (two lines, for reference)</span>
     <span class="n">path</span><span class="p">(</span><span class="s1">&#39;admin/&#39;</span><span class="p">,</span> <span class="n">admin</span><span class="o">.</span><span class="n">site</span><span class="o">.</span><span class="n">urls</span><span class="p">),</span>
@@ -8061,7 +8063,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 
 </div>
 
-<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Vite reads <code>.env</code> once, when the dev server starts. Editing <code>.env</code> while <code>npm run dev</code> is running changes nothing. Stop the server with <code>Ctrl+C</code> and run <code>npm run dev</code> again.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>The value must not end with a slash. Every call in this file adds its own leading slash, for example <code>request("/login/")</code>. If you set <code>VITE_API_URL=http://127.0.0.1:8000/api/</code> you get <code>http://127.0.0.1:8000/api//login/</code>, and Django will answer 404.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Changing the backend address is only half the job. Django refuses requests from <strong>origins</strong> it does not know about, where an origin is the scheme, host and port together, like <code>http://localhost:5180</code>. The <code>CORS_ALLOWED_ORIGINS</code> list in <code>backend/lms/settings.py</code> names four of them: <code>http://localhost:5180</code>, <code>http://127.0.0.1:5180</code>, <code>http://localhost:5173</code> and <code>http://127.0.0.1:5173</code>. <code>frontend/vite.config.js</code> sets the dev server to port 5180, but if 5180 is busy Vite quietly picks the next free number and prints it in the terminal. If that happens, add the new port to the list, or every single request will be blocked by the browser before Django even sees it.</p></div></div>
+<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Vite reads <code>.env</code> once, when the dev server starts. Editing <code>.env</code> while <code>npm run dev</code> is running changes nothing. Stop the server with <code>Ctrl+C</code> and run <code>npm run dev</code> again.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>The value must not end with a slash. Every call in this file adds its own leading slash, for example <code>request("/login/")</code>. If you set <code>VITE_API_URL=http://127.0.0.1:8001/api/</code> you get <code>http://127.0.0.1:8001/api//login/</code>, and Django will answer 404.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Changing the backend address is only half the job. Django refuses requests from <strong>origins</strong> it does not know about, where an origin is the scheme, host and port together, like <code>http://localhost:5180</code>. The <code>CORS_ALLOWED_ORIGINS</code> list in <code>backend/lms/settings.py</code> names four of them: <code>http://localhost:5180</code>, <code>http://127.0.0.1:5180</code>, <code>http://localhost:5173</code> and <code>http://127.0.0.1:5173</code>. <code>frontend/vite.config.js</code> sets the dev server to port 5180, but if 5180 is busy Vite quietly picks the next free number and prints it in the terminal. If that happens, add the new port to the list, or every single request will be blocked by the browser before Django even sees it.</p></div></div>
 <h3 id="remembering-who-is-logged-in-localstorage">Remembering who is logged in: localStorage</h3>
 <p>When a user logs in, Django hands back a <strong>token</strong>. A token is a long random-looking string that proves "I am the person who typed the right password." Every later request carries that token so Django knows who is asking.</p>
 <p>The token has to survive a page refresh. If it only lived in a React variable, hitting F5 would log the user out, because refreshing throws away all JavaScript memory and starts over.</p>
@@ -8346,7 +8348,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 <span class="w">    </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="nx">BASE_URL</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">path</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="nx">rest</span><span class="p">,</span><span class="w"> </span><span class="nx">headers</span><span class="w"> </span><span class="p">});</span>
 <span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span>
-<span class="w">      </span><span class="s2">&quot;Could not reach the server. Is Django running on http://127.0.0.1:8000?&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s2">&quot;Could not reach the server. Is Django running on http://127.0.0.1:8001?&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span>
 </code></pre></div>
@@ -8354,7 +8356,7 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 <p><code>fetch</code> throws only when the request never got an answer at all: Django is not running, the machine is offline, the address does not resolve, the browser blocked it. It does <strong>not</strong> throw for 404 or 500. Those are perfectly successful conversations in which the server said something unwelcome, and they are handled further down.</p>
 <p>The raw error from a failed <code>fetch</code> reads <code>TypeError: Failed to fetch</code>, which means nothing to a beginner staring at a red banner. So it is replaced with a sentence that names the most likely cause and tells the reader exactly what to check. <code>throw new Error("...")</code> creates an error carrying that text, which the calling page will catch as <code>problem.message</code>.</p>
 <p>Note <code>let response</code> is declared outside the <code>try</code>. A variable declared with <code>const</code> or <code>let</code> inside a block only exists inside that block, and we need <code>response</code> on the lines below.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Stop the Django server (<code>Ctrl+C</code> in the terminal running <code>runserver</code>) and reload the Teachers page. The red banner should read <code>Could not reach the server. Is Django running on http://127.0.0.1:8000?</code> Start Django again and reload: the table comes back. That one message will save you more time than any other line in this file.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Stop the Django server (<code>Ctrl+C</code> in the terminal running <code>runserver</code>) and reload the Teachers page. The red banner should read <code>Could not reach the server. Is Django running on http://127.0.0.1:8001?</code> Start Django again and reload: the table comes back. That one message will save you more time than any other line in this file.</p></div></div>
 <p>The rejected-token branch:</p>
 <div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/api.js  (request, continued)</span>
 <span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">response</span><span class="p">.</span><span class="nx">status</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="mf">401</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">auth</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
@@ -8941,7 +8943,7 @@ You should see an array of teacher objects, each with <code>id</code>, <code>nam
 <h3 id="what-you-have-now">What you have now</h3>
 <ul>
 <li><code>frontend/src/api.js</code>, the single file that every network call in the app goes through</li>
-<li>A <code>BASE_URL</code> that reads <code>VITE_API_URL</code> from a <code>.env</code> file, with <code>http://127.0.0.1:8000/api</code> as the fallback</li>
+<li>A <code>BASE_URL</code> that reads <code>VITE_API_URL</code> from a <code>.env</code> file, with <code>http://127.0.0.1:8001/api</code> as the fallback</li>
 <li><code>getToken</code>, <code>saveSession</code>, <code>getSavedUser</code> and <code>clearSession</code>, keeping the session in <code>localStorage</code> so a refresh does not log the user out, with a <code>try</code>/<code>catch</code> so corrupt stored text cannot crash the app</li>
 <li><code>readError()</code>, turning DRF's three error shapes into one readable line, so users see <code>phone: This phone number is already registered.</code> instead of <code>[object Object]</code></li>
 <li><code>handleExpiredToken()</code> firing a custom <code>lms:unauthorised</code> window event, letting <code>api.js</code> end a session without knowing that a router exists</li>
@@ -9596,7 +9598,7 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 </div>
 
 <p><code>ADMIN</code> is imported from <code>./permissions.js</code>, where it is the string <code>"admin"</code>. Using the constant instead of typing <code>"admin"</code> by hand means a typo shows up as a broken import you notice at once, rather than a link that silently never appears.</p>
-<p>Inside the component, three hooks and one filter:</p>
+<p>Inside the component: three hooks from React Router and the auth context, one remembered preference, and one filter.</p>
 <div class="filebox" markdown="0">
 <div class="filetab">frontend/src/Sidebar.jsx</div>
 
@@ -9605,6 +9607,14 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">location</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useLocation</span><span class="p">();</span>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">navigate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useNavigate</span><span class="p">();</span>
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">user</span><span class="p">,</span><span class="w"> </span><span class="nx">logOut</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useAuth</span><span class="p">();</span>
+
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">isCollapsed</span><span class="p">,</span><span class="w"> </span><span class="nx">setIsCollapsed</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span>
+<span class="w">    </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">localStorage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="nx">COLLAPSED_KEY</span><span class="p">)</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;true&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="p">);</span>
+
+<span class="w">  </span><span class="nx">useEffect</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">localStorage</span><span class="p">.</span><span class="nx">setItem</span><span class="p">(</span><span class="nx">COLLAPSED_KEY</span><span class="p">,</span><span class="w"> </span><span class="nb">String</span><span class="p">(</span><span class="nx">isCollapsed</span><span class="p">));</span>
+<span class="w">  </span><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="nx">isCollapsed</span><span class="p">]);</span>
 
 <span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">visibleMenu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">menu</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span>
 <span class="w">    </span><span class="p">(</span><span class="nx">item</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="o">!</span><span class="nx">item</span><span class="p">.</span><span class="nx">onlyFor</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">item</span><span class="p">.</span><span class="nx">onlyFor</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">role</span><span class="p">,</span>
@@ -9615,6 +9625,20 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 
 </div>
 
+<p>The one piece of state the sidebar owns is whether it is collapsed. It is read back out of <code>localStorage</code> on the first render and written back whenever it changes, so the choice survives a reload the same way the session does. The key it is stored under sits at the top of the file, next to the menu:</p>
+<div class="filebox" markdown="0">
+<div class="filetab">frontend/src/Sidebar.jsx</div>
+
+
+<div class="codehilite"><pre><span></span><code><span class="c1">// Whether the sidebar is collapsed is remembered across reloads, the same way</span>
+<span class="c1">// the session is. It is only a preference, so a broken value is not worth</span>
+<span class="c1">// guarding against beyond the === &quot;true&quot; check.</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">COLLAPSED_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lms:sidebarCollapsed&quot;</span><span class="p">;</span>
+</code></pre></div>
+
+
+</div>
+<p><code>localStorage</code> only holds strings, which is why the value goes in through <code>String(isCollapsed)</code> and comes back out through a comparison with <code>"true"</code>. Anything else in there — a stale value, junk somebody typed into the console — reads as <code>false</code>, and an expanded sidebar is the safe way to be wrong. Compare that with the token in <code>api.js</code>, where a bad value has to be caught and turned into "not logged in"; here it costs nothing, so nothing is spent on it.</p>
 <p>Read the filter as: keep this item if it has no <code>onlyFor</code> at all, or if its <code>onlyFor</code> matches my role. Nine items have no <code>onlyFor</code> and always survive. Accounts survives only for an admin.</p>
 <div class="filebox" markdown="0">
 <div class="filetab">frontend/src/Sidebar.jsx</div>
@@ -9658,13 +9682,16 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <span class="w">              </span><span class="p">&lt;</span><span class="nt">Link</span>
 <span class="w">                </span><span class="na">key</span><span class="o">=</span><span class="p">{</span><span class="nx">item</span><span class="p">.</span><span class="nx">address</span><span class="p">}</span>
 <span class="w">                </span><span class="na">to</span><span class="o">=</span><span class="p">{</span><span class="nx">item</span><span class="p">.</span><span class="nx">address</span><span class="p">}</span>
+<span class="w">                </span><span class="na">title</span><span class="o">=</span><span class="p">{</span><span class="nx">isCollapsed</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="nx">item</span><span class="p">.</span><span class="nx">text</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">}</span>
 <span class="w">                </span><span class="na">className</span><span class="o">=</span><span class="p">{</span>
-<span class="w">                  </span><span class="s2">&quot;mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                  </span><span class="s2">&quot;mb-1 flex items-center rounded-md py-2 text-sm &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                  </span><span class="nx">rowLayout</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                  </span><span class="s2">&quot; &quot;</span><span class="w"> </span><span class="o">+</span>
 <span class="w">                  </span><span class="nx">colours</span>
 <span class="w">                </span><span class="p">}</span>
 <span class="w">              </span><span class="p">&gt;</span>
 <span class="w">                </span><span class="p">{</span><span class="nx">item</span><span class="p">.</span><span class="nx">icon</span><span class="p">}</span>
-<span class="w">                </span><span class="p">{</span><span class="nx">item</span><span class="p">.</span><span class="nx">text</span><span class="p">}</span>
+<span class="w">                </span><span class="p">{</span><span class="o">!</span><span class="nx">isCollapsed</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">item</span><span class="p">.</span><span class="nx">text</span><span class="p">}</span>
 <span class="w">              </span><span class="p">&lt;/</span><span class="nt">Link</span><span class="p">&gt;</span>
 <span class="w">            </span><span class="p">);</span>
 <span class="w">          </span><span class="p">})}</span>
@@ -9675,16 +9702,72 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 </div>
 
 <div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p><code>&lt;Link to="/teachers"&gt;</code> and <code>&lt;a href="/teachers"&gt;</code> look identical on screen and behave completely differently. The plain <code>&lt;a&gt;</code> makes the browser throw away the page and download everything again, which resets all React state. <code>Link</code> changes the URL and swaps the component in place, keeping state and skipping the reload. Inside a React Router app, always use <code>Link</code>.</p></div></div>
+<h4 id="collapsing-the-sidebar">Collapsing the sidebar</h4>
+<p>Two things change when <code>isCollapsed</code> is true: the strip gets narrower, and every row loses its text. The width is one class swap on the outer <code>&lt;div&gt;</code>, <code>w-16</code> instead of <code>w-60</code>, with <code>transition-[width]</code> so it slides rather than jumps. The rows share one small variable, because the same layout is needed by the links, the profile row and the log out button:</p>
+<div class="filebox" markdown="0">
+<div class="filetab">frontend/src/Sidebar.jsx</div>
+
+
+<div class="codehilite"><pre><span></span><code><span class="w">  </span><span class="c1">// Collapsed rows are icon-only, so the label has to survive as a tooltip.</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">rowLayout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">isCollapsed</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s2">&quot;justify-center px-0&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;gap-3 px-3&quot;</span><span class="p">;</span>
+</code></pre></div>
+
+
+</div>
+<p>Expanded, a row is <code>gap-3 px-3</code>: icon, a gap, then the text. Collapsed, it is <code>justify-center px-0</code>: the icon alone, centred in the narrow strip. That is why the <code>className</code> on the <code>&lt;Link&gt;</code> above is built in three pieces — the part that never changes, then <code>rowLayout</code>, then <code>colours</code>.</p>
+<p>The text itself is dropped by <code>{!isCollapsed &amp;&amp; item.text}</code>. In JSX, <code>false</code> renders as nothing at all, so that line means "draw the text only when there is room for it". The label is not lost, though — it moves to <code>title={isCollapsed ? item.text : undefined}</code>, which is the tooltip the browser shows on hover. Passing <code>undefined</code> when the sidebar is open is deliberate: it leaves the attribute off entirely, rather than adding a tooltip that repeats a label already on screen.</p>
+<p>The toggle itself lives in the header, and it swaps places with the logo:</p>
+<div class="filebox" markdown="0">
+<div class="filetab">frontend/src/Sidebar.jsx</div>
+
+
+<div class="codehilite"><pre><span></span><code><span class="w">        </span><span class="p">{</span><span class="cm">/* Collapsed, the toggle takes the logo&#39;s place: at this width there</span>
+<span class="cm">            is only room for one thing, and the way back out matters more. */</span><span class="p">}</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">isCollapsed</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">(</span>
+<span class="w">          </span><span class="p">&lt;</span><span class="nt">button</span>
+<span class="w">            </span><span class="na">onClick</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setIsCollapsed</span><span class="p">(</span><span class="kc">false</span><span class="p">)}</span>
+<span class="w">            </span><span class="na">title</span><span class="o">=</span><span class="s">&quot;Expand sidebar&quot;</span>
+<span class="w">            </span><span class="na">aria-label</span><span class="o">=</span><span class="s">&quot;Expand sidebar&quot;</span>
+<span class="w">            </span><span class="na">aria-expanded</span><span class="o">=</span><span class="p">{</span><span class="kc">false</span><span class="p">}</span>
+<span class="w">            </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700&quot;</span>
+<span class="w">          </span><span class="p">&gt;</span>
+<span class="w">            </span><span class="p">&lt;</span><span class="nt">PanelLeftOpen</span><span class="w"> </span><span class="na">size</span><span class="o">=</span><span class="p">{</span><span class="mf">20</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">          </span><span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">(</span>
+<span class="w">          </span><span class="p">&lt;&gt;</span>
+<span class="w">            </span><span class="p">&lt;</span><span class="nt">GraduationCap</span><span class="w"> </span><span class="na">size</span><span class="o">=</span><span class="p">{</span><span class="mf">22</span><span class="p">}</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;text-indigo-600&quot;</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">            </span><span class="p">&lt;</span><span class="nt">span</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;text-lg font-semibold text-slate-900&quot;</span><span class="p">&gt;</span><span class="nx">LMS</span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+<span class="w">            </span><span class="p">&lt;</span><span class="nt">button</span>
+<span class="w">              </span><span class="na">onClick</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setIsCollapsed</span><span class="p">(</span><span class="kc">true</span><span class="p">)}</span>
+<span class="w">              </span><span class="na">title</span><span class="o">=</span><span class="s">&quot;Collapse sidebar&quot;</span>
+<span class="w">              </span><span class="na">aria-label</span><span class="o">=</span><span class="s">&quot;Collapse sidebar&quot;</span>
+<span class="w">              </span><span class="na">aria-expanded</span><span class="o">=</span><span class="p">{</span><span class="kc">true</span><span class="p">}</span>
+<span class="w">              </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700&quot;</span>
+<span class="w">            </span><span class="p">&gt;</span>
+<span class="w">              </span><span class="p">&lt;</span><span class="nt">PanelLeftClose</span><span class="w"> </span><span class="na">size</span><span class="o">=</span><span class="p">{</span><span class="mf">20</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">            </span><span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+<span class="w">          </span><span class="p">&lt;/&gt;</span>
+<span class="w">        </span><span class="p">)}</span>
+</code></pre></div>
+
+
+</div>
+<p><code>PanelLeftOpen</code> and <code>PanelLeftClose</code> are two more <code>lucide-react</code> icons, imported at the top of the file alongside the menu ones. <code>&lt;&gt;...&lt;/&gt;</code> is a <strong>fragment</strong>: a wrapper that groups several elements without adding a real <code>&lt;div&gt;</code> to the page, which is what lets both branches of the <code>?:</code> return "one thing" while one of them is really three.</p>
+<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>Collapsing is a display preference and nothing more. It hides link text, not links: the Accounts entry is already gone for a teacher or a student, and that is the <code>onlyFor</code> filter, not this. Nothing here decides what anybody may do — <code>permissions.js</code> chooses what to draw, and <code>backend/backend/permissions.py</code> is what actually refuses.</p></div></div>
 <p>At the bottom of the sidebar sits the profile link, doubling as the "who am I" display:</p>
 <div class="filebox" markdown="0">
 <div class="filetab">frontend/src/Sidebar.jsx</div>
 
 
 <div class="codehilite"><pre><span></span><code><span class="w">            </span><span class="p">&lt;</span><span class="nt">UserRound</span><span class="w"> </span><span class="na">size</span><span class="o">=</span><span class="p">{</span><span class="mf">16</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;</span>
-<span class="w">            </span><span class="p">&lt;</span><span class="nt">span</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;truncate&quot;</span><span class="p">&gt;{</span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">username</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;Signed in&quot;</span><span class="p">}&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
-<span class="w">            </span><span class="p">&lt;</span><span class="nt">span</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600&quot;</span><span class="p">&gt;</span>
-<span class="w">              </span><span class="p">{</span><span class="nx">roleLabel</span><span class="p">(</span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">role</span><span class="p">)}</span>
-<span class="w">            </span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+<span class="w">            </span><span class="p">{</span><span class="o">!</span><span class="nx">isCollapsed</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span>
+<span class="w">              </span><span class="p">&lt;&gt;</span>
+<span class="w">                </span><span class="p">&lt;</span><span class="nt">span</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;truncate&quot;</span><span class="p">&gt;{</span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">username</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;Signed in&quot;</span><span class="p">}&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+<span class="w">                </span><span class="p">&lt;</span><span class="nt">span</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600&quot;</span><span class="p">&gt;</span>
+<span class="w">                  </span><span class="p">{</span><span class="nx">roleLabel</span><span class="p">(</span><span class="nx">user</span><span class="o">?</span><span class="p">.</span><span class="nx">role</span><span class="p">)}</span>
+<span class="w">                </span><span class="p">&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+<span class="w">              </span><span class="p">&lt;/&gt;</span>
+<span class="w">            </span><span class="p">)}</span>
 </code></pre></div>
 
 
@@ -9812,7 +9895,7 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <p><code>await logIn(phone, password)</code> is the <code>logIn</code> from <code>AuthContext.jsx</code>, reached through <code>useAuth()</code>. <code>await</code> pauses here until the network round trip finishes.</p>
 <p>Say it once more, because it is the single most common stumble in this project: <strong>you log in with a phone number, not a username.</strong> The Django <code>LoginView</code> does <code>Profile.objects.get(phone=phone)</code>. Your username is what the sidebar prints; it is not what signs you in. That is also why the input is labelled "Phone number" with a placeholder of <code>01711110001</code>.</p>
 <p><code>navigate(goBackTo, { replace: true })</code> runs only if <code>logIn</code> did not throw. <code>replace</code> again: the login page should not sit in history behind the dashboard, or Back would take a signed-in user to a login form.</p>
-<p><code>catch (problem) { setError(problem.message) }</code> catches whatever <code>api.js</code> threw. Because <code>readError</code> in <code>api.js</code> already flattened Django's several error shapes into one readable line, this page does not need to know anything about how Django REST Framework formats its responses. A wrong password produces <code>{"error": "Invalid phone or password"}</code> from the backend, <code>readError</code> pulls out the <code>error</code> key, and that exact sentence lands in the red box. A Django server that is not running produces <code>Could not reach the server. Is Django running on http://127.0.0.1:8000?</code> from the <code>fetch</code> catch in <code>api.js</code>, in the same red box.</p>
+<p><code>catch (problem) { setError(problem.message) }</code> catches whatever <code>api.js</code> threw. Because <code>readError</code> in <code>api.js</code> already flattened Django's several error shapes into one readable line, this page does not need to know anything about how Django REST Framework formats its responses. A wrong password produces <code>{"error": "Invalid phone or password"}</code> from the backend, <code>readError</code> pulls out the <code>error</code> key, and that exact sentence lands in the red box. A Django server that is not running produces <code>Could not reach the server. Is Django running on http://127.0.0.1:8001?</code> from the <code>fetch</code> catch in <code>api.js</code>, in the same red box.</p>
 <p><code>finally</code> runs whether or not there was an error, which is the point of using it. Put <code>setIsSaving(false)</code> only in the <code>try</code> and a failed login leaves the button stuck on "Logging in..." forever.</p>
 <h4 id="the-markup">The markup</h4>
 <div class="filebox" markdown="0">
@@ -9884,7 +9967,7 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <p class="figref">See Figure 0.1.</p>
 <p>Type a wrong password and the <code>catch</code> fills the red <code>Alert</code> with the sentence Django sent back.</p>
 <p class="figref">See Figure 0.2.</p>
-<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Testing with your Django superuser's username. It will always fail with "Invalid phone or password", and you will start suspecting your token code. The login view searches the <code>Profile</code> table by phone, so an account with no <code>Profile</code> row cannot log in at all through the API, no matter how correct the password is. If your admin cannot get in, open the Django admin at <code>http://127.0.0.1:8000/admin/</code> and check that a Profile with a phone number exists for that user.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Log in with a real phone and password. You should land on the dashboard, the sidebar should show your username with a role badge next to it, and Local Storage should now hold <code>lms_access_token</code> and <code>lms_user</code>. Press F5. You should stay on the dashboard, because of the lazy initialisers in <code>AuthProvider</code>.</p></div></div>
+<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Testing with your Django superuser's username. It will always fail with "Invalid phone or password", and you will start suspecting your token code. The login view searches the <code>Profile</code> table by phone, so an account with no <code>Profile</code> row cannot log in at all through the API, no matter how correct the password is. If your admin cannot get in, open the Django admin at <code>http://127.0.0.1:8001/admin/</code> and check that a Profile with a phone number exists for that user.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Log in with a real phone and password. You should land on the dashboard, the sidebar should show your username with a role badge next to it, and Local Storage should now hold <code>lms_access_token</code> and <code>lms_user</code>. Press F5. You should stay on the dashboard, because of the lazy initialisers in <code>AuthProvider</code>.</p></div></div>
 <h3 id="98-what-happens-when-you-press-log-in">9.8 What happens when you press Log in</h3>
 <p>Here is the whole journey, one step at a time, naming the real file doing the work.</p>
 <ol>
@@ -9893,7 +9976,7 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <li><code>handleSubmit</code> calls <code>event.preventDefault()</code>, so the browser does not reload the page. It clears <code>error</code> and sets <code>isSaving</code> to <code>true</code>. The button greys out and reads "Logging in...".</li>
 <li>It calls <code>logIn(phone, password)</code>. That function came out of the context via <code>useAuth()</code> in <strong><code>frontend/src/auth.js</code></strong>, and it was defined in <strong><code>frontend/src/AuthContext.jsx</code></strong>.</li>
 <li><code>logIn</code> calls <code>loginRequest</code>, which is <code>login</code> from <strong><code>frontend/src/api.js</code></strong>. That runs <code>request("/login/", { method: "POST", body: JSON.stringify({ phone, password }), auth: false })</code>.</li>
-<li><code>request</code> builds the URL from <code>BASE_URL</code> (which is <code>http://127.0.0.1:8000/api</code> unless a <code>VITE_API_URL</code> setting overrides it), giving <code>http://127.0.0.1:8000/api/login/</code>. It sets <code>Content-Type: application/json</code> because there is a body, skips the Authorization header because <code>auth</code> is <code>false</code>, and calls <code>fetch</code>.</li>
+<li><code>request</code> builds the URL from <code>BASE_URL</code> (which is <code>http://127.0.0.1:8001/api</code> unless a <code>VITE_API_URL</code> setting overrides it), giving <code>http://127.0.0.1:8001/api/login/</code>. It sets <code>Content-Type: application/json</code> because there is a body, skips the Authorization header because <code>auth</code> is <code>false</code>, and calls <code>fetch</code>.</li>
 <li>Django routes that URL through <strong><code>backend/lms/urls.py</code></strong> and <strong><code>backend/backend/urls.py</code></strong> to <code>LoginView</code> in <strong><code>backend/backend/views.py</code></strong>. It validates the two fields, looks up <code>Profile.objects.get(phone=phone)</code>, checks <code>user.check_password(password)</code>, builds a JWT pair with <code>get_tokens_for_user</code>, and responds with <code>message</code>, <code>user_id</code>, <code>username</code>, <code>role</code> and a nested <code>tokens</code> object.</li>
 <li>Back in <strong><code>api.js</code></strong>, <code>request</code> sees a 200, parses the JSON body and returns it. (Had it been a 400, <code>readError</code> would have pulled out the <code>error</code> key and <code>request</code> would have thrown <code>new Error("Invalid phone or password")</code>, which <code>handleSubmit</code>'s <code>catch</code> would put in the red <code>Alert</code>, and the journey would stop here.)</li>
 <li>In <strong><code>AuthContext.jsx</code></strong>, <code>logIn</code> builds <code>nextUser</code> from <code>data.user_id</code>, <code>data.username</code> and <code>data.role</code>, then calls <code>saveSession(data.tokens.access, nextUser)</code>. <strong><code>api.js</code></strong> writes <code>lms_access_token</code> and <code>lms_user</code> into <code>localStorage</code>.</li>
@@ -10014,25 +10097,91 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <div class="filetab">frontend/src/components/Input.jsx</div>
 
 
-<div class="codehilite"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">inputBox</span><span class="p">,</span><span class="w"> </span><span class="nx">labelText</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;./styles.js&quot;</span><span class="p">;</span>
+<div class="codehilite"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useId</span><span class="p">,</span><span class="w"> </span><span class="nx">useState</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;react&quot;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Eye</span><span class="p">,</span><span class="w"> </span><span class="nx">EyeOff</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;lucide-react&quot;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">inputBox</span><span class="p">,</span><span class="w"> </span><span class="nx">labelText</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;./styles.js&quot;</span><span class="p">;</span>
 
-<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">Input</span><span class="p">({</span><span class="w"> </span><span class="nx">label</span><span class="p">,</span><span class="w"> </span><span class="nx">className</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">...</span><span class="nx">rest</span><span class="w"> </span><span class="p">})</span><span class="w"> </span><span class="p">{</span>
+<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">Input</span><span class="p">({</span><span class="w"> </span><span class="nx">label</span><span class="p">,</span><span class="w"> </span><span class="nx">className</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">...</span><span class="nx">rest</span><span class="w"> </span><span class="p">})</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// A password box gets an eye button that turns it back into a plain text</span>
+<span class="w">  </span><span class="c1">// box. Every password field in the app is an Input, so the pages have</span>
+<span class="w">  </span><span class="c1">// nothing to do.</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">isPassword</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">type</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="p">;</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">isShowing</span><span class="p">,</span><span class="w"> </span><span class="nx">setIsShowing</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// The eye button has to sit outside the &lt;label&gt;, otherwise its own text</span>
+<span class="w">  </span><span class="c1">// becomes part of the box&#39;s name and a screen reader reads out</span>
+<span class="w">  </span><span class="c1">// &quot;Password Show password&quot;. So the password version ties the two together</span>
+<span class="w">  </span><span class="c1">// with an id instead of by nesting.</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useId</span><span class="p">();</span>
+
+<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">isPassword</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">label</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">className</span><span class="p">}&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">span</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">labelText</span><span class="p">}&gt;{</span><span class="nx">label</span><span class="p">}&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">input</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">inputBox</span><span class="p">}</span><span class="w"> </span><span class="na">type</span><span class="o">=</span><span class="p">{</span><span class="nx">type</span><span class="p">}</span><span class="w"> </span><span class="p">{</span><span class="na">...rest</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">label</span><span class="p">&gt;</span>
+<span class="w">    </span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+</code></pre></div>
+
+
+</div>
+
+<p><code>label</code> and <code>className</code> are handled by hand. <code>required</code>, <code>value</code>, <code>onChange</code>, <code>placeholder</code>, <code>step</code> and anything else you invent tomorrow all land in <code>rest</code> and get forwarded to the real <code>&lt;input&gt;</code>. Neither you nor this file has to know the list in advance.</p>
+<p>The other thing on that line is <code>className = ""</code>. That equals sign is a <strong>default value</strong>. If nobody passes <code>className</code>, it is the empty string instead of <code>undefined</code>. That matters because the code later glues strings together, and gluing <code>undefined</code> onto a string gives you the literal word "undefined" in your HTML.</p>
+<p><code>type</code> is the one attribute that is named rather than left in <code>rest</code>, and it is named for a reason: the component has to look at it. Everything above the <code>if</code> is the same for every kind of box; the <code>if</code> then answers the only question that changes the markup, which is whether this is a password field. An <strong>early return</strong> like that keeps the ordinary case — the date box, the number box, the plain text box — exactly as short as it was before the password feature existed. Note that <code>type</code> is still passed on to the real <code>&lt;input&gt;</code> by hand, because naming a prop takes it out of <code>rest</code>.</p>
+<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Forgetting <code>...rest</code> when you write your own component. You then wonder why <code>&lt;Input required /&gt;</code> does not make the field required. It is because your component quietly swallowed the prop and never handed it to the real <code>&lt;input&gt;</code> underneath.</p></div></div>
+<h3 id="the-password-box-and-the-eye-button">The password box, and the eye button</h3>
+<p>The other half of the file is the password version: the same box, plus a small eye button that turns the dots back into readable text while you hold the password in your head.</p>
+<div class="filebox" markdown="0">
+<div class="filetab">frontend/src/components/Input.jsx</div>
+
+
+<div class="codehilite"><pre><span></span><code><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">action</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">isShowing</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s2">&quot;Hide password&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;Show password&quot;</span><span class="p">;</span>
+
 <span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
-<span class="w">    </span><span class="p">&lt;</span><span class="nt">label</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">className</span><span class="p">}&gt;</span>
-<span class="w">      </span><span class="p">&lt;</span><span class="nt">span</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">labelText</span><span class="p">}&gt;{</span><span class="nx">label</span><span class="p">}&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
-<span class="w">      </span><span class="p">&lt;</span><span class="nt">input</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">inputBox</span><span class="p">}</span><span class="w"> </span><span class="p">{</span><span class="na">...rest</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;</span>
-<span class="w">    </span><span class="p">&lt;/</span><span class="nt">label</span><span class="p">&gt;</span>
+<span class="w">    </span><span class="p">&lt;</span><span class="nt">div</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">className</span><span class="p">}&gt;</span>
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">label</span><span class="w"> </span><span class="na">htmlFor</span><span class="o">=</span><span class="p">{</span><span class="nx">id</span><span class="p">}</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">labelText</span><span class="p">}&gt;</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">label</span><span class="p">}</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">label</span><span class="p">&gt;</span>
+
+<span class="w">      </span><span class="p">{</span><span class="cm">/* This wrapper is what the button is positioned against, and the extra</span>
+<span class="cm">          right padding keeps the typed text from running underneath it. */</span><span class="p">}</span>
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">div</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;relative&quot;</span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">input</span>
+<span class="w">          </span><span class="na">id</span><span class="o">=</span><span class="p">{</span><span class="nx">id</span><span class="p">}</span>
+<span class="w">          </span><span class="na">className</span><span class="o">=</span><span class="p">{</span><span class="nx">inputBox</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s2">&quot; pr-10&quot;</span><span class="p">}</span>
+<span class="w">          </span><span class="na">type</span><span class="o">=</span><span class="p">{</span><span class="nx">isShowing</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s2">&quot;text&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="p">}</span>
+<span class="w">          </span><span class="p">{</span><span class="na">...rest</span><span class="p">}</span>
+<span class="w">        </span><span class="p">/&gt;</span>
+
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">button</span>
+<span class="w">          </span><span class="na">type</span><span class="o">=</span><span class="s">&quot;button&quot;</span>
+<span class="w">          </span><span class="na">onClick</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setIsShowing</span><span class="p">(</span><span class="o">!</span><span class="nx">isShowing</span><span class="p">)}</span>
+<span class="w">          </span><span class="na">aria-label</span><span class="o">=</span><span class="p">{</span><span class="nx">action</span><span class="p">}</span>
+<span class="w">          </span><span class="na">aria-pressed</span><span class="o">=</span><span class="p">{</span><span class="nx">isShowing</span><span class="p">}</span>
+<span class="w">          </span><span class="na">title</span><span class="o">=</span><span class="p">{</span><span class="nx">action</span><span class="p">}</span>
+<span class="w">          </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;absolute inset-y-0 right-0 flex items-center rounded-r-md px-3 text-slate-500 hover:text-slate-700&quot;</span>
+<span class="w">        </span><span class="p">&gt;</span>
+<span class="w">          </span><span class="p">{</span><span class="nx">isShowing</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="p">&lt;</span><span class="nt">EyeOff</span><span class="w"> </span><span class="na">size</span><span class="o">=</span><span class="p">{</span><span class="mf">16</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">&lt;</span><span class="nt">Eye</span><span class="w"> </span><span class="na">size</span><span class="o">=</span><span class="p">{</span><span class="mf">16</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;}</span>
+<span class="w">        </span><span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+<span class="w">    </span><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
 <span class="w">  </span><span class="p">);</span>
 <span class="p">}</span>
 </code></pre></div>
 
 
-
 </div>
 
-<p><code>label</code> and <code>className</code> are handled by hand. <code>type</code>, <code>required</code>, <code>value</code>, <code>onChange</code>, <code>placeholder</code>, <code>step</code> and anything else you invent tomorrow all land in <code>rest</code> and get forwarded to the real <code>&lt;input&gt;</code>. Neither you nor this file has to know the list in advance.</p>
-<p>The other thing on that line is <code>className = ""</code>. That equals sign is a <strong>default value</strong>. If nobody passes <code>className</code>, it is the empty string instead of <code>undefined</code>. That matters because the code later glues strings together, and gluing <code>undefined</code> onto a string gives you the literal word "undefined" in your HTML.</p>
-<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Forgetting <code>...rest</code> when you write your own component. You then wonder why <code>&lt;Input required /&gt;</code> does not make the field required. It is because your component quietly swallowed the prop and never handed it to the real <code>&lt;input&gt;</code> underneath.</p></div></div>
+<p><code>isShowing</code> is a piece of state holding one true-or-false value, and the whole feature hangs off it. The <code>type</code> of the real <code>&lt;input&gt;</code> is <code>{isShowing ? "text" : "password"}</code>: <code>password</code> draws dots, <code>text</code> draws the characters. Nothing is fetched, nothing is decrypted, nothing is sent anywhere — the browser was always holding the typed characters, and the box was only choosing not to draw them.</p>
+<p>Three details in that markup are worth taking away, because they come up whenever you put a control inside a form field.</p>
+<ol>
+<li><strong>The button cannot live inside the <code>&lt;label&gt;</code>.</strong> A label's text is the accessible name of the field it wraps, so a button nested inside one gets read out as part of the name: a screen reader would announce the box as "Password Show password". The password branch therefore stops nesting and joins the two by id instead — <code>htmlFor={id}</code> on the label, <code>id={id}</code> on the input. <code>useId()</code> is React's hook for exactly this: it hands out an id that is unique on the page, so two password boxes on one screen never collide.</li>
+<li><strong><code>relative</code> and <code>absolute</code> are a pair.</strong> <code>absolute</code> positions an element against its nearest positioned ancestor, so the wrapper <code>&lt;div className="relative"&gt;</code> exists purely to be that ancestor. Without it the button would fly off to a corner of the page. <code>inset-y-0 right-0</code> pins it to the full height of the box at the right-hand edge, and the extra <code>pr-10</code> on the input reserves the space so long passwords do not run underneath it.</li>
+<li><strong>The name says what the button will do next.</strong> <code>aria-label</code> and <code>title</code> both read "Show password" while the password is hidden, not "Password is hidden". <code>aria-pressed</code> carries the state separately, which is what a toggle button is supposed to do. And <code>type="button"</code> is not decoration: a <code>&lt;button&gt;</code> inside a form defaults to <code>type="submit"</code>, so leaving it off would mean clicking the eye submits the login form.</li>
+</ol>
+<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>Every password field in this app is an <code>&lt;Input type="password"&gt;</code> — the Login page, the Accounts form, and both password boxes on the Profile page. All of them got the eye button the moment this file grew one. Not a single page was edited. That is the argument for having a shared component at all, and it is much easier to see here than in a paragraph about reuse.</p></div></div>
 <h3 id="stylesjs-two-strings-that-live-in-one-place">styles.js: two strings that live in one place</h3>
 <p><code>Input</code>, <code>Select</code> and <code>Textarea</code> are three different components, but on screen the boxes look identical. Their labels look identical too. If the Tailwind classes were typed into each of the three files, then changing the focus colour would mean three edits, and the day you missed one, one form field would look wrong and you would not notice for a month.</p>
 <p>So the shared strings were pulled out into a file of their own. This is the entire file.</p>
@@ -11251,7 +11400,7 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 </tr>
 <tr>
 <td><code>Input.jsx</code></td>
-<td>label plus <code>&lt;input&gt;</code></td>
+<td>label plus <code>&lt;input&gt;</code>, eye button on passwords</td>
 <td><code>label</code>, plus anything an input takes</td>
 </tr>
 <tr>
@@ -11384,22 +11533,22 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <tr>
 <td><code>studentsApi.list()</code></td>
 <td>GET</td>
-<td><code>http://127.0.0.1:8000/api/student/</code></td>
+<td><code>http://127.0.0.1:8001/api/student/</code></td>
 </tr>
 <tr>
 <td><code>studentsApi.create(values)</code></td>
 <td>POST</td>
-<td><code>http://127.0.0.1:8000/api/student/</code></td>
+<td><code>http://127.0.0.1:8001/api/student/</code></td>
 </tr>
 <tr>
 <td><code>studentsApi.update(id, values)</code></td>
 <td>PUT</td>
-<td><code>http://127.0.0.1:8000/api/student/5/</code></td>
+<td><code>http://127.0.0.1:8001/api/student/5/</code></td>
 </tr>
 <tr>
 <td><code>studentsApi.remove(id)</code></td>
 <td>DELETE</td>
-<td><code>http://127.0.0.1:8000/api/student/5/</code></td>
+<td><code>http://127.0.0.1:8001/api/student/5/</code></td>
 </tr>
 </tbody>
 </table>
@@ -11682,7 +11831,7 @@ touch<span class="w"> </span>src/pages/Students.jsx
 <li><code>finally</code> runs either way, whether the try succeeded or the catch caught. Turning off <code>isLoading</code> belongs there, because the loading text has to stop even when the request failed.</li>
 </ul>
 <p>Where does the message end up? <code>setError(problem.message)</code> puts it in state, and step 6 draws <code>&lt;Alert&gt;{error}&lt;/Alert&gt;</code> at the top of the page. <code>Alert</code> returns <code>null</code> when its children are empty, so an empty <code>error</code> draws nothing at all. There is no "show the banner" call anywhere. Setting the string is showing the banner.</p>
-<p>The messages themselves come from <code>api.js</code>. If Django is not running you get <code>Could not reach the server. Is Django running on http://127.0.0.1:8000?</code>. If Django refuses you, <code>readError()</code> in <code>api.js</code> pulls out the <code>detail</code> line Django sent; for a student or a teacher trying to change a student row that line is <code>Only an admin can change teacher and student records.</code>, the <code>message</code> set on the <code>AdminWrites</code> class in <code>backend/backend/permissions.py</code>. If a field is rejected you get <code>enrollment_date: This field is required.</code></p>
+<p>The messages themselves come from <code>api.js</code>. If Django is not running you get <code>Could not reach the server. Is Django running on http://127.0.0.1:8001?</code>. If Django refuses you, <code>readError()</code> in <code>api.js</code> pulls out the <code>detail</code> line Django sent; for a student or a teacher trying to change a student row that line is <code>Only an admin can change teacher and student records.</code>, the <code>message</code> set on the <code>AdminWrites</code> class in <code>backend/backend/permissions.py</code>. If a field is rejected you get <code>enrollment_date: This field is required.</code></p>
 <p class="figref">See Figure 5.1.</p>
 <p>Notice <code>setError("")</code> on the success path. Without it, an error from a previous attempt would stay on screen after a later attempt worked.</p>
 <h3 id="step-3-reload">Step 3 - reload()</h3>
@@ -12054,7 +12203,7 @@ touch<span class="w"> </span>src/pages/Students.jsx
 <h3 id="prove-it-works">Prove it works</h3>
 <p>Start both halves of the app. Backend in one terminal:</p>
 <div class="codehilite"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span><span class="s2">&quot;/Users/tausif/Projects/Ostad/Batch 08/lms/backend&quot;</span>
-python<span class="w"> </span>manage.py<span class="w"> </span>runserver
+python<span class="w"> </span>manage.py<span class="w"> </span>runserver<span class="w"> </span>8001
 </code></pre></div>
 
 <p>Frontend in another:</p>
@@ -12063,7 +12212,7 @@ npm<span class="w"> </span>run<span class="w"> </span>dev
 </code></pre></div>
 
 <p><code>frontend/vite.config.js</code> sets the port to 5180, so open <code>http://localhost:5180/students</code> and sign in as an admin. Remember that this app logs you in with a phone number, not a username and not an email.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>The heading shows <code>Loading...</code> for a moment, then <code>N students</code>. The Add student button is on the right. The table has seven columns. If the row count is 0 and there is no red banner, the page is working and the database is simply empty. Click Add student, fill in a name and a date, press Save, and the row appears.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Watch the green banner after saving. Do nothing, and about four seconds later it vanishes on its own. That is the <code>setTimeout</code> inside <code>useFlash</code> in <code>frontend/src/flash.js</code>, not anything in this page.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Stop the Django terminal with Ctrl+C, then refresh <code>/students</code>. You get the red banner reading <code>Could not reach the server. Is Django running on http://127.0.0.1:8000?</code>. That message is thrown by the <code>catch</code> around <code>fetch</code> in <code>api.js</code>, travels as <code>problem.message</code>, lands in <code>error</code> state, and is drawn by the first <code>&lt;Alert&gt;</code>. Start Django again and refresh to clear it.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Sign out and sign in as a student. The rows still load, because reading is open to any signed-in account. But the Add student button is gone, and every row's Action column shows a grey dash instead of the pencil and trash. Right-click and choose Inspect: the buttons are not in the HTML at all. That is <code>mayCreate</code> and <code>mayEdit</code> from <code>canCreate(user?.role, "student")</code> and <code>canWrite(user?.role, "student")</code>.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>The heading shows <code>Loading...</code> for a moment, then <code>N students</code>. The Add student button is on the right. The table has seven columns. If the row count is 0 and there is no red banner, the page is working and the database is simply empty. Click Add student, fill in a name and a date, press Save, and the row appears.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Watch the green banner after saving. Do nothing, and about four seconds later it vanishes on its own. That is the <code>setTimeout</code> inside <code>useFlash</code> in <code>frontend/src/flash.js</code>, not anything in this page.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Stop the Django terminal with Ctrl+C, then refresh <code>/students</code>. You get the red banner reading <code>Could not reach the server. Is Django running on http://127.0.0.1:8001?</code>. That message is thrown by the <code>catch</code> around <code>fetch</code> in <code>api.js</code>, travels as <code>problem.message</code>, lands in <code>error</code> state, and is drawn by the first <code>&lt;Alert&gt;</code>. Start Django again and refresh to clear it.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Sign out and sign in as a student. The rows still load, because reading is open to any signed-in account. But the Add student button is gone, and every row's Action column shows a grey dash instead of the pencil and trash. Right-click and choose Inspect: the buttons are not in the HTML at all. That is <code>mayCreate</code> and <code>mayEdit</code> from <code>canCreate(user?.role, "student")</code> and <code>canWrite(user?.role, "student")</code>.</p></div></div>
 <h3 id="the-same-page-again-with-different-nouns">The same page again, with different nouns</h3>
 <p>Now open <code>frontend/src/pages/Teachers.jsx</code> and read it top to bottom. It carries a six-step comment block of its own, the same state, the same effect, the same <code>reload()</code>, the same <code>handleSave</code>, the same two-part delete.</p>
 <p class="figref">See Figure 0.4.</p>
@@ -13810,7 +13959,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <p><code>clearForm()</code> then empties all seven fields, ready for the next account, and resets the role back to <code>"student"</code>.</p>
 <h4 id="the-honest-limitation">The honest limitation</h4>
 <p>This page creates accounts. It does not list them, search them, edit them, deactivate them or delete them.</p>
-<p>Which means there is no screen in this app for: seeing who has an account, promoting a student to teacher, fixing a typo in somebody else's email, or resetting a colleague's password. All of that is Django admin, at <code>http://127.0.0.1:8000/admin/</code>, where the <code>Profile</code> model has the <code>role</code> field on it and the list page lets you edit that role directly. The Profile page says so out loud when an admin is looking:</p>
+<p>Which means there is no screen in this app for: seeing who has an account, promoting a student to teacher, fixing a typo in somebody else's email, or resetting a colleague's password. All of that is Django admin, at <code>http://127.0.0.1:8001/admin/</code>, where the <code>Profile</code> model has the <code>role</code> field on it and the list page lets you edit that role directly. The Profile page says so out loud when an admin is looking:</p>
 <div class="filebox" markdown="0">
 <div class="filetab">frontend/src/pages/Profile.jsx</div>
 
@@ -14367,21 +14516,21 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 ├── .gitignore                                # what Git must never commit
 ├── README.md                                 # how to run the project, in one page
 ├── docs/
-│   └── guide/
-│       └── images/                           # the screenshots printed in this book
-│           ├── ss-login.png
-│           ├── ss-login-error.png
-│           ├── ss-dashboard.png
-│           ├── ss-teachers-list.png
-│           ├── ss-teachers-form.png
-│           ├── ss-teachers-confirm.png
-│           ├── ss-teachers-success.png
-│           ├── ss-students.png
-│           └── ss-courses.png
+│   ├── guide/
+│   │   ├── lms-guide.html                    # this book
+│   │   ├── lms-guide.pdf
+│   │   ├── lms-auth-guide.html               # the companion volume on accounts
+│   │   ├── lms-auth-guide.pdf
+│   │   └── images/                           # the screenshots printed in both books
+│   │       ├── ss-login.png
+│   │       ├── ss-dashboard.png
+│   │       └── ... 24 files in all
+│   └── slides/
+│       ├── lms-auth-slides.html              # the class deck for the same subject
+│       └── lms-auth-slides.pdf
 ├── backend/                                  # everything Python
 │   ├── manage.py                             # the command you type: runserver, migrate, ...
 │   ├── requirements.txt                      # the six Python packages this needs
-│   ├── db.sqlite3                            # LEFT OVER. Nothing reads this file.
 │   ├── lms/                                  # the project package: settings and the root URLs
 │   │   ├── __init__.py                       # empty. Marks the folder as a Python package.
 │   │   ├── settings.py                       # database, apps, CORS, JWT, email
@@ -14418,7 +14567,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
         ├── main.jsx                          # the first file that runs
         ├── index.css                         # one line: @import &quot;tailwindcss&quot;;
         ├── App.jsx                           # the list of addresses
-        ├── Sidebar.jsx                       # the left menu and the frame around each page
+        ├── Sidebar.jsx                       # the left menu (collapsible) and the page frame
         ├── api.js                            # every call to Django, in one file
         ├── auth.js                           # the auth context object and the useAuth() hook
         ├── AuthContext.jsx                   # AuthProvider: who is logged in
@@ -14433,7 +14582,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
         │   ├── ConfirmDialog.jsx             # &quot;Delete this?&quot; instead of window.confirm()
         │   ├── Div.jsx                       # a plain div wrapper
         │   ├── IconButton.jsx                # the small pencil and bin buttons
-        │   ├── Input.jsx                     # a labelled text box
+        │   ├── Input.jsx                     # a labelled text box, with a show-password eye
         │   ├── PageHeader.jsx                # the title and subtitle at the top of a page
         │   ├── ProtectedRoute.jsx            # no token, no page
         │   ├── Select.jsx                    # a labelled dropdown
@@ -14455,7 +14604,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
             └── NotFound.jsx                  # the 404 page
 </code></pre></div>
 
-<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>You do not have to trust that list. Run <code>git ls-files</code> from the project root and Git prints every file it is tracking, one per line: 68 of them. That is the tree above minus three things, because Git is not storing them: <code>backend/db.sqlite3</code>, which <code>.gitignore</code> blocks, and the screenshots under <code>docs/</code>, which have simply never been committed.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>There really are two folders called <code>backend</code>. The outer one, <code>lms/backend/</code>, is just a folder on your disk holding the Python side. The inner one, <code>lms/backend/backend/</code>, is the Django <strong>app</strong> (a Django app is one bundle of models, views and URLs that Django loads as a unit), and its name is the string <code>'backend'</code> in <code>INSTALLED_APPS</code>. That is why every import in the Python code reads <code>from backend.views import ...</code> and why the database tables are called <code>backend_teacher</code>, <code>backend_course</code> and so on.</p></div></div>
+<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>You do not have to trust that list. Run <code>git ls-files</code> from the project root and Git prints every file it is tracking, one per line — 98 of them, most of that being the screenshots under <code>docs/guide/images/</code>. The tree above is deliberately shorter than that list in one place only: it names the images folder rather than all 24 files in it.</p></div></div><div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>There really are two folders called <code>backend</code>. The outer one, <code>lms/backend/</code>, is just a folder on your disk holding the Python side. The inner one, <code>lms/backend/backend/</code>, is the Django <strong>app</strong> (a Django app is one bundle of models, views and URLs that Django loads as a unit), and its name is the string <code>'backend'</code> in <code>INSTALLED_APPS</code>. That is why every import in the Python code reads <code>from backend.views import ...</code> and why the database tables are called <code>backend_teacher</code>, <code>backend_course</code> and so on.</p></div></div>
 <h3 id="repo-root">Repo root</h3>
 <table>
 <thead>
@@ -14482,8 +14631,8 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <td>not used</td>
 </tr>
 <tr>
-<td><code>docs/guide/images/</code></td>
-<td>The screenshot files printed in this book. Not part of the running app.</td>
+<td><code>docs/</code></td>
+<td><code>guide/</code> holds this book and the companion volume on accounts, as HTML and PDF, with the screenshots in <code>guide/images/</code>. <code>slides/</code> holds the class deck for the same subject. None of it is part of the running app.</td>
 <td>13</td>
 </tr>
 </tbody>
@@ -14507,11 +14656,6 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <td><code>requirements.txt</code></td>
 <td>The six Python packages: <code>Django==5.2.7</code>, <code>djangorestframework==3.15.2</code>, <code>djangorestframework-simplejwt==5.4.0</code>, <code>django-cors-headers==4.9.0</code>, <code>mysqlclient==2.2.7</code>, <code>PyJWT==2.10.1</code>.</td>
 <td>2</td>
-</tr>
-<tr>
-<td><code>db.sqlite3</code></td>
-<td>Left over from an earlier setup. Nothing reads it. See the section below.</td>
-<td>not used</td>
 </tr>
 <tr>
 <td><code>lms/</code></td>
@@ -14617,7 +14761,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 </tr>
 <tr>
 <td><code>admin.py</code></td>
-<td>Registers all nine models with <code>@admin.register(...)</code> so they appear at <code>http://127.0.0.1:8000/admin/</code>. <code>ProfileAdmin</code> has <code>list_editable = ['role']</code>, which is how you promote somebody to admin.</td>
+<td>Registers all nine models with <code>@admin.register(...)</code> so they appear at <code>http://127.0.0.1:8001/admin/</code>. <code>ProfileAdmin</code> has <code>list_editable = ['role']</code>, which is how you promote somebody to admin.</td>
 <td>5</td>
 </tr>
 <tr>
@@ -14823,7 +14967,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 </tr>
 <tr>
 <td><code>Sidebar.jsx</code></td>
-<td>The left menu, the signed-in user's name and role badge, the Log out button, and the <code>&lt;Outlet /&gt;</code> where each page is drawn. Filters the <code>Accounts</code> link out for non-admins.</td>
+<td>The left menu, the signed-in user's name and role badge, the Log out button, and the <code>&lt;Outlet /&gt;</code> where each page is drawn. Filters the <code>Accounts</code> link out for non-admins, and collapses to an icon-only strip, remembering that in <code>localStorage</code>.</td>
 <td>9</td>
 </tr>
 <tr>
@@ -14907,7 +15051,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 </tr>
 <tr>
 <td><code>Input.jsx</code></td>
-<td>A labelled text box. Everything it does not use, it spreads onto the <code>&lt;input&gt;</code> with <code>{...rest}</code>, so <code>type</code>, <code>required</code>, <code>value</code> and <code>onChange</code> all work.</td>
+<td>A labelled text box. Everything it does not use, it spreads onto the <code>&lt;input&gt;</code> with <code>{...rest}</code>, so <code>required</code>, <code>value</code> and <code>onChange</code> all work. <code>type="password"</code> takes a second branch that adds the eye button for showing the password.</td>
 <td>9</td>
 </tr>
 <tr>
@@ -15016,10 +15160,10 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 </tbody>
 </table>
 <div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Count the pages yourself. Run <code>ls frontend/src/pages</code> and you should see exactly thirteen <code>.jsx</code> files, matching the table above. If you see a <code>Register.jsx</code>, you are looking at an older copy of the project.</p></div></div>
-<h3 id="two-things-in-the-repo-that-the-app-never-touches">Two things in the repo that the app never touches</h3>
-<p>Both of these exist on disk, both look important, and neither is used when you run the app.</p>
+<h3 id="two-things-in-the-repo-that-the-app-never-touches">Two things on disk that the app never reads</h3>
+<p>Neither of these is in Git, both can be sitting in your working copy, and neither is used when you run the app.</p>
 <p><strong><code>backend/db.sqlite3</code></strong></p>
-<p>This is a SQLite database file left over from an earlier setup, before the project moved to MySQL. Nothing reads it. <code>settings.py</code> points at MySQL and only MySQL:</p>
+<p>This is the database file Django makes when it is left on its own default engine — a stray from a <code>migrate</code> run before <code>DATABASES</code> was edited, or from a copy of the project that predates MySQL. It is not in Git, and nothing reads it. <code>settings.py</code> points at MySQL and only MySQL:</p>
 <div class="filebox" markdown="0">
 <div class="filetab">backend/lms/settings.py</div>
 
@@ -15040,7 +15184,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 
 </div>
 
-<p><code>ENGINE</code> says <code>django.db.backends.mysql</code>. There is no second entry and no SQLite fallback. The root <code>.gitignore</code> even lists <code>db.sqlite3</code>, so newer copies of the project will not carry it. You can delete the file and the app will not notice. If you are hunting for your data and cannot find it, it is in MySQL, in the database named <code>lms_db</code>.</p>
+<p><code>ENGINE</code> says <code>django.db.backends.mysql</code>. There is no second entry and no SQLite fallback. The root <code>.gitignore</code> lists <code>db.sqlite3</code>, which is why a fresh clone does not carry one. If you find one anyway, you can delete it and the app will not notice. And if you are hunting for your data and cannot find it, it is in MySQL, in the database named <code>lms_db</code>.</p>
 <p><strong><code>frontend/dist/</code></strong></p>
 <p>This folder is what <code>npm run build</code> produces: the whole React app squeezed into one JavaScript file and one CSS file, ready to be copied onto a real web server. It currently holds <code>index.html</code>, <code>favicon.svg</code> and <code>assets/index-B_6RSYlw.js</code> plus <code>assets/index-da4n1Hff.css</code>.</p>
 <p>While you are developing, none of it is used. <code>npm run dev</code> starts Vite's own server on port 5180, which reads your source files directly and rebuilds them as you type. The <code>dist/</code> folder is a snapshot from whenever somebody last ran the build. It is stale the moment you edit a file in <code>src/</code>. <code>frontend/.gitignore</code> lists <code>dist</code>, so it is not committed either.</p>
@@ -15169,8 +15313,8 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 
 </div>
 
-<p><code>BASE_URL</code> is <code>import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api"</code>. Nobody has set <code>VITE_API_URL</code>, so the URL is <code>http://127.0.0.1:8000/api/teacher/</code> and the method is <code>POST</code>.</p>
-<p>Because your page is served from <code>http://localhost:5180</code> and the request goes to <code>http://127.0.0.1:8000</code>, that is a <strong>cross-origin</strong> request: the two addresses are not the same, so the browser treats the server as a stranger. It first sends a small <code>OPTIONS</code> request asking Django whether it is allowed. That question is called a <strong>preflight</strong>. <code>corsheaders.middleware.CorsMiddleware</code>, listed second in <code>MIDDLEWARE</code> (the list of small pieces of code every request passes through), answers yes because <code>http://localhost:5180</code> is in <code>CORS_ALLOWED_ORIGINS</code>. Then the real <code>POST</code> goes out.</p>
+<p><code>BASE_URL</code> is <code>import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8001/api"</code>. Nobody has set <code>VITE_API_URL</code>, so the URL is <code>http://127.0.0.1:8001/api/teacher/</code> and the method is <code>POST</code>.</p>
+<p>Because your page is served from <code>http://localhost:5180</code> and the request goes to <code>http://127.0.0.1:8001</code>, that is a <strong>cross-origin</strong> request: the two addresses are not the same, so the browser treats the server as a stranger. It first sends a small <code>OPTIONS</code> request asking Django whether it is allowed. That question is called a <strong>preflight</strong>. <code>corsheaders.middleware.CorsMiddleware</code>, listed second in <code>MIDDLEWARE</code> (the list of small pieces of code every request passes through), answers yes because <code>http://localhost:5180</code> is in <code>CORS_ALLOWED_ORIGINS</code>. Then the real <code>POST</code> goes out.</p>
 <div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Vite reports port 5181 because 5180 was already busy, and every request suddenly fails with a CORS error in the console. <code>settings.py</code> only allows 5180 and 5173. Either free up 5180 or add the new port to <code>CORS_ALLOWED_ORIGINS</code> and restart Django.</p></div></div>
 <h4 id="7-djangos-root-url-list-strips-api">7. Django's root URL list strips <code>/api/</code></h4>
 <div class="filebox" markdown="0">
@@ -15594,7 +15738,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <h3 id="glossary">Glossary</h3>
 <p>Every technical word this book uses, in one sentence each.</p>
 <p><strong>API</strong> - a way for one program to ask another program for data or to change data, without a human clicking anything; here, the React app asks the Django app.</p>
-<p><strong>endpoint</strong> - one specific address in an API that does one job, like <code>http://127.0.0.1:8000/api/teacher/</code>.</p>
+<p><strong>endpoint</strong> - one specific address in an API that does one job, like <code>http://127.0.0.1:8001/api/teacher/</code>.</p>
 <p><strong>JSON</strong> - a plain-text way of writing data that both Python and JavaScript understand, made of <code>{ }</code> objects, <code>[ ]</code> lists, numbers, strings and <code>true</code>/<code>false</code>.</p>
 <p><strong>HTTP method</strong> - the verb on a request that says what you want done: <code>GET</code> to read, <code>POST</code> to create, <code>PUT</code> to replace, <code>PATCH</code> to change part, <code>DELETE</code> to remove.</p>
 <p><strong>status code</strong> - a three-digit number in the reply saying how it went; this app uses <code>200</code> fine, <code>201</code> created, <code>204</code> deleted with no body, <code>400</code> your data was wrong, <code>401</code> no valid token, <code>403</code> your role is not allowed, <code>404</code> no such thing.</p>
@@ -15629,7 +15773,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <ul>
 <li>A complete file tree of the project, with a one-line note on every folder and file.</li>
 <li>A table per folder saying what each file does and which chapter builds it.</li>
-<li>The knowledge that <code>backend/db.sqlite3</code> and <code>frontend/dist/</code> sit in the repo but are never read by the running app, and that <code>frontend/README.md</code> describes an older, server-less version.</li>
+<li>The knowledge that a stray <code>backend/db.sqlite3</code> and the built <code>frontend/dist/</code> can sit in your working copy without ever being read by the running app, and that <code>frontend/README.md</code> describes an older, server-less version.</li>
 <li>A twenty-step trace of "add a teacher", from the <code>onSubmit</code> on the form to the <code>INSERT</code> in MySQL and back to the green banner.</li>
 <li>A seven-step trace of logging in, ending with the access token in <code>localStorage</code>.</li>
 <li>A glossary of the thirty-two terms this book leans on.</li>
@@ -15666,7 +15810,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <tr>
 <td>2</td>
 <td>Django</td>
-<td>http://127.0.0.1:8000</td>
+<td>http://127.0.0.1:8001</td>
 <td>The API. Reads and writes MySQL, checks tokens, checks roles.</td>
 </tr>
 <tr>
@@ -15729,7 +15873,7 @@ python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </
 <span class="nb">source</span><span class="w"> </span>.venv/bin/activate<span class="w">           </span><span class="c1"># every time: step into it</span>
 pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt<span class="w">     </span><span class="c1"># first time, and after any dependency change</span>
 python<span class="w"> </span>manage.py<span class="w"> </span>migrate
-python<span class="w"> </span>manage.py<span class="w"> </span>runserver
+python<span class="w"> </span>manage.py<span class="w"> </span>runserver<span class="w"> </span>8001
 </code></pre></div>
 
 <p>On Windows the activation line is different:</p>
@@ -15760,7 +15904,7 @@ PyJWT==2.10.1
 
 <ul>
 <li><code>python manage.py migrate</code> builds the tables in <code>lms_db</code>. It works from the <strong>migration files</strong> in <code>backend/backend/migrations/</code>, which are small Python files describing each change ever made to the models. Running <code>migrate</code> is safe any time; when everything is already up to date it prints <code>No migrations to apply.</code></li>
-<li><code>python manage.py runserver</code> starts the API and holds the terminal. Leave it.</li>
+<li><code>python manage.py runserver 8001</code> starts the API and holds the terminal. Leave it.</li>
 </ul>
 <p>You should see something close to this:</p>
 <div class="codehilite"><pre><span></span><code>Watching for file changes with StatReloader
@@ -15768,11 +15912,11 @@ Performing system checks...
 
 System check identified no issues (0 silenced).
 Django version 5.2.7, using settings &#39;lms.settings&#39;
-Starting development server at http://127.0.0.1:8000/
+Starting development server at http://127.0.0.1:8001/
 Quit the server with CONTROL-C.
 </code></pre></div>
 
-<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p><code>runserver</code> restarts itself whenever you save a <code>.py</code> file. That is what "Watching for file changes" means. You almost never need to stop and start it by hand. The exception is <code>--noreload</code>, covered in the troubleshooting table below, which turns that off.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Open http://127.0.0.1:8000/api/teacher/ in your browser. You should get the Django REST Framework browsable page saying <code>HTTP 401 Unauthorized</code> and <code>"Authentication credentials were not provided."</code> That 401 is a <strong>success</strong>. It proves Django is up, the URL is wired, and the permission classes are doing their job. A blank page or "site can't be reached" means the server is not running.</p></div></div>
+<div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p><code>runserver</code> restarts itself whenever you save a <code>.py</code> file. That is what "Watching for file changes" means. You almost never need to stop and start it by hand. The exception is <code>--noreload</code>, covered in the troubleshooting table below, which turns that off.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Open http://127.0.0.1:8001/api/teacher/ in your browser. You should get the Django REST Framework browsable page saying <code>HTTP 401 Unauthorized</code> and <code>"Authentication credentials were not provided."</code> That 401 is a <strong>success</strong>. It proves Django is up, the URL is wired, and the permission classes are doing their job. A blank page or "site can't be reached" means the server is not running.</p></div></div>
 <p class="figref">See Figure 2.1.</p>
 <h4 id="terminal-3-the-vite-frontend">Terminal 3: the Vite frontend</h4>
 <div class="codehilite"><pre><span></span><code><span class="c1"># Terminal 3, from the lms folder</span>
@@ -15857,7 +16001,7 @@ Password (again):
 Superuser created successfully.
 </code></pre></div>
 
-<p>A <strong>superuser</strong> is Django's built-in "can do anything" account. It can sign in at http://127.0.0.1:8000/admin/ and edit any row in any table.</p>
+<p>A <strong>superuser</strong> is Django's built-in "can do anything" account. It can sign in at http://127.0.0.1:8001/admin/ and edit any row in any table.</p>
 <h4 id="step-2-give-that-user-a-profile-with-a-phone-number">Step 2: give that user a Profile with a phone number</h4>
 <p>Here is the part that catches everyone. <code>createsuperuser</code> creates a row in Django's <code>auth_user</code> table. It does <strong>not</strong> create a <code>Profile</code>. And this app's login view does not look at <code>auth_user</code> at all to find you. It looks at <code>Profile.phone</code>:</p>
 <div class="codehilite"><pre><span></span><code><span class="c1"># backend/backend/views.py  (inside LoginView.post)</span>
@@ -15876,7 +16020,7 @@ Superuser created successfully.
 </code></pre></div>
 
 <p>The only missing piece is the phone number to type. Start <code>runserver</code> again, then go to:</p>
-<div class="codehilite"><pre><span></span><code>http://127.0.0.1:8000/admin/backend/profile/add/
+<div class="codehilite"><pre><span></span><code>http://127.0.0.1:8001/admin/backend/profile/add/
 </code></pre></div>
 
 <p>Fill in three fields:</p>
@@ -15911,7 +16055,7 @@ Superuser created successfully.
 <p class="figref">See Figure 0.3.</p>
 <div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Typing the username on the login form. The placeholder on the phone field literally reads <code>01711110001</code>, and the Accounts page that made the account says "They sign in with the phone number, not the username." It still happens on the first try to almost everybody, because every other website in the world wants an email. The error you get is <code>Invalid phone or password</code>, which sounds like a wrong password and is not.</p></div></div>
 <p class="figref">See Figure 0.2.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>You are on the dashboard, and the sidebar shows nine links plus <strong>Accounts</strong> at the bottom of the list. If <strong>Accounts</strong> is missing, your role is not admin. Go back to http://127.0.0.1:8000/admin/backend/profile/, fix the role in the list (it is editable straight from the list view), save, then log out and back in.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>You are on the dashboard, and the sidebar shows nine links plus <strong>Accounts</strong> at the bottom of the list. If <strong>Accounts</strong> is missing, your role is not admin. Go back to http://127.0.0.1:8001/admin/backend/profile/, fix the role in the list (it is editable straight from the list view), save, then log out and back in.</p></div></div>
 <h4 id="making-the-other-accounts">Making the other accounts</h4>
 <p>Now use the app. Go to <strong>Accounts</strong> in the sidebar and fill in the form: first name, last name, username, email, phone, password, and a role from the dropdown. Make yourself one teacher account and one student account so you can see the app through all three sets of eyes.</p>
 <p>The green banner tells you what to hand over:</p>
@@ -16017,7 +16161,7 @@ Superuser created successfully.
 
 <p>Second, the due date. You type local time; the page converts it to UTC before sending, and converts back to local when you reopen the form for editing. <strong>UTC</strong> is the one worldwide clock that servers agree to store times in, so that a time saved in Dhaka and read in London means the same moment.</p>
 <p>Expect: green banner <code>Assignment added.</code>, and a Due column showing the same wall-clock time you typed. The table prints it with <code>toLocaleString()</code>, which renders in your own timezone even though the server stored UTC. If the Due column is out by several hours, the conversion is the thing to look at.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>With one assignment saved, open http://127.0.0.1:8000/admin/backend/assignment/ and look at the same row in Django admin. The <code>due_date</code> shown there is in UTC, because <code>TIME_ZONE = 'UTC'</code> in settings. Seeing the same moment written two ways in two places is the clearest way to understand why the conversion in <code>Assignments.jsx</code> exists.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>With one assignment saved, open http://127.0.0.1:8001/admin/backend/assignment/ and look at the same row in Django admin. The <code>due_date</code> shown there is in UTC, because <code>TIME_ZONE = 'UTC'</code> in settings. Seeing the same moment written two ways in two places is the clearest way to understand why the conversion in <code>Assignments.jsx</code> exists.</p></div></div>
 <h4 id="7-a-submission">7. A submission</h4>
 <p>Sidebar → <strong>Submissions</strong> → <strong>Add submission</strong>. Assignment, Student, Content.</p>
 <p>Expect: green banner <code>Submission added.</code>, and a "Submitted" column with the current date and time you never typed. Same <code>auto_now_add</code> story as the enrollment date.</p>
@@ -16062,11 +16206,11 @@ Superuser created successfully.
 <tbody>
 <tr>
 <td><code>Error: That port is already in use.</code></td>
-<td>Something already holds port 8000. Usually it is an older <code>runserver</code> you forgot about in another terminal window. Find it and <code>Ctrl+C</code> it. If you cannot find it, run <code>lsof -ti:8000 \| xargs kill</code> on macOS or Linux. Or move out of its way with <code>python manage.py runserver 8001</code>, but then you must also change <code>BASE_URL</code> in <code>frontend/src/api.js</code> or set <code>VITE_API_URL=http://127.0.0.1:8001/api</code>, because the frontend falls back to 8000 when that variable is not set.</td>
+<td>Something already holds port 8001. Usually it is an older <code>runserver</code> you forgot about in another terminal window. Find it and <code>Ctrl+C</code> it. If you cannot find it, run <code>lsof -ti:8001 \| xargs kill</code> on macOS or Linux. Or move out of its way with a different port, <code>python manage.py runserver 8002</code>, but then you must also set <code>VITE_API_URL=http://127.0.0.1:8002/api</code> in <code>frontend/.env</code>, because the frontend falls back to 8001 when that variable is not set.</td>
 </tr>
 <tr>
 <td><code>pywatchman.SocketTimeout: timed out waiting for response</code></td>
-<td>Django's auto-reloader tried to use Watchman, a file-watching service, and Watchman did not answer in time. Two real fixes. Turn the reloader off: <code>python manage.py runserver --noreload</code>. The cost is that you now restart the server yourself after every Python edit. Or give Watchman longer: <code>DJANGO_WATCHMAN_TIMEOUT=20 python manage.py runserver</code>. Both are in the project README.</td>
+<td>Django's auto-reloader tried to use Watchman, a file-watching service, and Watchman did not answer in time. Two real fixes. Turn the reloader off: <code>python manage.py runserver --noreload</code>. The cost is that you now restart the server yourself after every Python edit. Or give Watchman longer: <code>DJANGO_WATCHMAN_TIMEOUT=20 python manage.py runserver 8001</code>. Both are in the project README.</td>
 </tr>
 <tr>
 <td><code>django.db.utils.OperationalError: (1045, "Access denied for user 'lms_user'@'localhost' (using password: YES)")</code></td>
@@ -16101,11 +16245,11 @@ Superuser created successfully.
 <td>Vite could not have 5180, so it quietly took 5181 (or 5182, and so on). The app loads fine. Then every API call fails, because 5181 is not in <code>CORS_ALLOWED_ORIGINS</code>. Best fix: free 5180 by closing whatever holds it, usually another Vite you left running. Second best: add the port Vite actually picked to <code>CORS_ALLOWED_ORIGINS</code> in <code>backend/lms/settings.py</code>, both the <code>localhost:</code> and the <code>127.0.0.1:</code> form, then restart Django.</td>
 </tr>
 <tr>
-<td>In the browser console: <code>Access to fetch at 'http://127.0.0.1:8000/api/teacher/' from origin 'http://localhost:5181' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.</code></td>
+<td>In the browser console: <code>Access to fetch at 'http://127.0.0.1:8001/api/teacher/' from origin 'http://localhost:5181' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.</code></td>
 <td>The same problem as the row above, seen from the browser's side. Django replied, but without a header saying "the page at <code>localhost:5181</code> is allowed to read this", so the browser threw the reply away before React ever saw it. Note that this is a browser rule, not a Django rule. The exact same request from the terminal with <code>curl</code> (a command-line tool that fetches a URL) succeeds. Fix the origin, or add it to the list in settings.</td>
 </tr>
 <tr>
-<td>The red banner reads <code>Could not reach the server. Is Django running on http://127.0.0.1:8000?</code></td>
+<td>The red banner reads <code>Could not reach the server. Is Django running on http://127.0.0.1:8001?</code></td>
 <td>The <code>fetch()</code> call threw before any reply came back. Django is down, crashed, or was never started. Look at Terminal 2. This message comes from the <code>catch</code> around <code>fetch</code> in <code>frontend/src/api.js</code>, and it fires for network failures only, not for a 400 or a 403.</td>
 </tr>
 <tr>
@@ -16121,7 +16265,7 @@ Superuser created successfully.
 <span class="w">    </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="nx">BASE_URL</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">path</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="nx">rest</span><span class="p">,</span><span class="w"> </span><span class="nx">headers</span><span class="w"> </span><span class="p">});</span>
 <span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span>
-<span class="w">      </span><span class="s2">&quot;Could not reach the server. Is Django running on http://127.0.0.1:8000?&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s2">&quot;Could not reach the server. Is Django running on http://127.0.0.1:8001?&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span>
 </code></pre></div>
@@ -16156,7 +16300,7 @@ Superuser created successfully.
 </tr>
 <tr>
 <td><code>This phone number is already registered.</code></td>
-<td>Raised by <code>validate_phone</code> on <code>RegisterSerializer</code>, because <code>Profile.phone</code> is <code>unique=True</code> and one phone number identifies exactly one login. Pick another number. If you genuinely want to reuse it, free it first at http://127.0.0.1:8000/admin/backend/profile/.</td>
+<td>Raised by <code>validate_phone</code> on <code>RegisterSerializer</code>, because <code>Profile.phone</code> is <code>unique=True</code> and one phone number identifies exactly one login. Pick another number. If you genuinely want to reuse it, free it first at http://127.0.0.1:8001/admin/backend/profile/.</td>
 </tr>
 <tr>
 <td><code>That username is already taken.</code></td>
@@ -16226,7 +16370,7 @@ Superuser created successfully.
 <p><strong>7. Trying to grade the same submission twice.</strong> <code>Results.submission</code> is a <code>OneToOneField</code>. The second attempt is a 400. The Results page hides already-graded submissions from the new-result dropdown, so you have to work at it, but you will manage it eventually by opening two tabs. Edit the existing result instead.</p>
 <p><strong>8. Running <code>npm run dev</code> from the wrong folder.</strong> There is no <code>package.json</code> in the repo root and none in <code>backend/</code>, so from either place npm cannot find the file that lists the scripts. You get <code>npm error code ENOENT</code> and a line ending <code>Could not read package.json</code>. The command belongs in <code>frontend/</code>, and only there.</p>
 <p><strong>9. Forgetting to activate the venv.</strong> Symptoms come in a set: <code>ModuleNotFoundError: No module named 'django'</code>, or <code>No module named 'MySQLdb'</code>, or <code>pip install</code> appearing to work while <code>runserver</code> still cannot find anything. The tell is your prompt. No <code>(.venv)</code> at the front, no venv. Every new terminal needs <code>source .venv/bin/activate</code> again; activation does not survive closing the window.</p>
-<p><strong>10. Running <code>migrate</code> against the wrong database.</strong> There is a <code>backend/db.sqlite3</code> file sitting in this repo. It is left over from an earlier setup and nothing uses it. If you set <code>DB_NAME</code> in one terminal and not another, or edit <code>DATABASES</code> to point at SQLite for a quick test, you end up with two databases and your data in whichever one you are not looking at. Before you panic that "my teachers disappeared", check which database you are actually connected to.</p>
+<p><strong>10. Running <code>migrate</code> against the wrong database.</strong> Django writes a <code>backend/db.sqlite3</code> the moment it is pointed at its default engine, and nothing in this project reads that file. If you set <code>DB_NAME</code> in one terminal and not another, or edit <code>DATABASES</code> to point at SQLite for a quick test, you end up with two databases and your data in whichever one you are not looking at. Before you panic that "my teachers disappeared", check which database you are actually connected to.</p>
 <p><strong>11. Assuming a <code>Teacher</code> row is a teacher's login.</strong> They are unrelated tables. Creating a Teacher row on the Teachers page does not create an account, and creating a teacher account on the Accounts page does not create a Teacher row. Nothing joins them. This is the single biggest conceptual gap in the project and section 14.6 opens with it.</p>
 <p><strong>12. Restarting Vite after changing <code>backend/lms/settings.py</code>.</strong> Wrong server. Settings belong to Django, so it is Terminal 2 that has to restart. Django usually reloads itself when a <code>.py</code> file changes, but if you started it with <code>--noreload</code> it will not, and you will keep seeing the old CORS list.</p>
 <p><strong>13. Expecting logging out to invalidate the token.</strong> There is no logout endpoint. <code>logOut()</code> in <code>AuthContext.jsx</code> deletes the token from localStorage and nothing else. The token stays valid on the server until it expires, and if you had copied it beforehand it would still work. That is a real property of JWTs (JSON Web Tokens, the token format this project uses), not an oversight in the frontend.</p>
@@ -16248,7 +16392,7 @@ Superuser created successfully.
 <p><code>RefreshToken.for_user()</code> in <code>backend/backend/views.py</code> already mints a refresh token with a seven-day lifetime, and <code>LoginView</code> already returns it as <code>data.tokens.refresh</code>. Then the frontend throws it away: <code>saveSession(data.tokens.access, nextUser)</code> stores only the access token.</p>
 <p>The endpoint itself is one line in <code>backend/backend/urls.py</code>, using <code>TokenRefreshView</code> from <code>rest_framework_simplejwt.views</code>. The interesting work is in <code>frontend/src/api.js</code>: store the refresh token in <code>saveSession()</code>, and change <code>handleExpiredToken()</code> so that instead of dumping the session it tries the refresh call once, and only gives up if that also fails. Do that and <code>ACCESS_TOKEN_LIFETIME</code> in settings can come back down from 8 hours to something sane.</p>
 <h4 id="5-list-the-accounts-on-the-accounts-page">5. List the accounts on the Accounts page</h4>
-<p><code>frontend/src/pages/Accounts.jsx</code> creates accounts and then forgets them. To see who exists, or change a role, or deactivate somebody, you leave the app for http://127.0.0.1:8000/admin/backend/profile/.</p>
+<p><code>frontend/src/pages/Accounts.jsx</code> creates accounts and then forgets them. To see who exists, or change a role, or deactivate somebody, you leave the app for http://127.0.0.1:8001/admin/backend/profile/.</p>
 <p>Making it a real page means a new list view in <code>backend/backend/views.py</code> guarded by <code>IsAdmin</code>, a serializer joining <code>User</code> and <code>Profile</code> in <code>backend/backend/serializers.py</code>, a path in <code>backend/backend/urls.py</code>, a call in <code>frontend/src/api.js</code>, and a <code>&lt;Table&gt;</code> under the existing form in <code>Accounts.jsx</code>. It is the same six steps as every resource page, which is the point: once you can do it once you can do it anywhere in this codebase.</p>
 <hr>
 <h3 id="what-you-have-now">What you have now</h3>

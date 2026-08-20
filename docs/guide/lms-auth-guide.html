@@ -2351,7 +2351,7 @@ profile page opens.</p>
 <span class="w">    </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span><span class="nx">BASE_URL</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">path</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="nx">rest</span><span class="p">,</span><span class="w"> </span><span class="nx">headers</span><span class="w"> </span><span class="p">});</span>
 <span class="w">  </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">throw</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="ne">Error</span><span class="p">(</span>
-<span class="w">      </span><span class="s2">&quot;Could not reach the server. Is Django running on http://127.0.0.1:8000?&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s2">&quot;Could not reach the server. Is Django running on http://127.0.0.1:8001?&quot;</span><span class="p">,</span>
 <span class="w">    </span><span class="p">);</span>
 <span class="w">  </span><span class="p">}</span>
 <span class="w">  </span><span class="p">...</span>
@@ -2363,7 +2363,7 @@ the header is there. Three details:</p>
 
 <ul>
 <li><code>auth = true</code> is the default, so calls are authenticated unless they say otherwise.
-Only four calls opt out: login, and the two halves of the password reset flow. Defaulting to
+Only three calls opt out: login, and the two halves of the password reset flow. Defaulting to
 <i>secure</i> and opting out deliberately is the same instinct as
 <code>DEFAULT_PERMISSION_CLASSES</code> on the server.</li>
 <li>The header is spelled <code>Authorization: Bearer &lt;token&gt;</code>, matching
@@ -2377,16 +2377,18 @@ reached a server at all &mdash; Django not running, wrong port, no network. That
 from a request that arrives and is refused, which is a normal response with a status code.</p>
 
 <div class="callout mistake">
-<div class="callout-label">Port mismatch</div>
+<div class="callout-label">Which port</div>
 <div class="callout-body">
-<p>That error message names port 8000, but the base URL a few lines above defaults to 8001:</p>
+<p>Both that message and the base URL a few lines above name the same port, and it is not Django&rsquo;s default:</p>
 <div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">BASE_URL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">import</span><span class="p">.</span><span class="nx">meta</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">VITE_API_URL</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;http://127.0.0.1:8001/api&quot;</span><span class="p">;</span>
 </code></pre></div>
-<p>The README starts Django with plain <code>python manage.py runserver</code>, which listens on
-8000. So on a fresh clone the frontend calls 8001 and nothing answers. Either start Django with
-<code>python manage.py runserver 8001</code>, or create <code>frontend/.env</code> containing
-<code>VITE_API_URL=http://127.0.0.1:8000/api</code>. Whichever you pick, the two numbers must
-agree. This is the single most common "nothing works" on a first run.</p>
+<p>Django&rsquo;s own default is 8000, so <code>python manage.py runserver</code> on its own leaves
+the frontend calling a port with nothing behind it. That is why the README says
+<code>python manage.py runserver 8001</code>. The pairing to keep is the port Django listens on
+and the port <code>api.js</code> calls: they have to be the same number. If you want a different
+one, run Django there and create <code>frontend/.env</code> containing
+<code>VITE_API_URL=http://127.0.0.1:&lt;that port&gt;/api</code>. A mismatch here is the single
+most common "nothing works" on a first run.</p>
 </div>
 </div>
 
@@ -2745,7 +2747,7 @@ the world and nothing would warn you. Flipping the default means the forgetful c
 <i>locked</i> case.</p>
 
 <p>The jargon is <b>fail closed</b>: when in doubt, refuse. Every endpoint in this project now
-starts from "signed-in accounts only" and opens up deliberately from there. Two do:
+starts from "signed-in accounts only" and opens up deliberately from there. Three do:
 <code>LoginView</code> and the two password-reset views, all marked <code>AllowAny</code>. One goes
 the other way and gets stricter: <code>RegisterView</code>, with <code>IsAdmin</code>.</p>
 
@@ -3521,9 +3523,9 @@ curl lets you attach one.</p>
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 python manage.py runserver 8001</code></pre></div>
 
-<p>Leave it running and open a second terminal for everything below. The port is 8001 here to
-match <code>api.js</code>'s default; if you prefer 8000, change it in both places (Chapter 7 has
-the details).</p>
+<p>Leave it running and open a second terminal for everything below. The port is 8001 because
+that is the one <code>api.js</code> calls; if you prefer another, run Django there and set
+<code>VITE_API_URL</code> to match (Chapter 7 has the details).</p>
 
 <p>You will need an admin account with a Profile. If you have not made one, Chapter 2 shows how.
 The examples below use the phone number <code>01711110001</code> and the password
@@ -3825,7 +3827,7 @@ request. With curl, add <code>-i</code>.</p>
 <td>The field was missing or misspelled in the body. Note it is <code>phone</code>, not <code>username</code> or <code>email</code>.</td>
 </tr>
 <tr>
-<td><code>Could not reach the server. Is Django running on http://127.0.0.1:8000?</code></td>
+<td><code>Could not reach the server. Is Django running on http://127.0.0.1:8001?</code></td>
 <td>&mdash;</td>
 <td>The frontend's own message when <code>fetch</code> never got an answer. Django is not running, or is on a different port from the one <code>api.js</code> is calling. See the port note below.</td>
 </tr>
@@ -3838,14 +3840,9 @@ request. With curl, add <code>-i</code>.</p>
 </table>
 
 <div class="callout mistake">
-<div class="callout-label">The port mismatch, once more</div>
+<div class="callout-label">The port, once more</div>
 <div class="callout-body">
-<p><code>api.js</code> defaults to <code>http://127.0.0.1:8001/api</code>. The README starts Django
-with plain <code>runserver</code>, which listens on <b>8000</b>. On a fresh clone these do not
-match and nothing works, with an error message that names the wrong number. Fix it in one of two
-places &mdash; <code>python manage.py runserver 8001</code>, or a <code>frontend/.env</code> file
-containing <code>VITE_API_URL=http://127.0.0.1:8000/api</code> &mdash; and restart the Vite dev
-server afterwards, because environment variables are read at startup.</p>
+<p><code>api.js</code> defaults to <code>http://127.0.0.1:8001/api</code>, and the README starts Django with <code>python manage.py runserver 8001</code> to match. Plain <code>runserver</code> listens on <b>8000</b>, and then nothing works. Fix it in one of two places &mdash; start Django on 8001, or put a <code>frontend/.env</code> file containing <code>VITE_API_URL=http://127.0.0.1:8000/api</code> next to it &mdash; and restart the Vite dev server afterwards, because environment variables are read at startup.</p>
 </div>
 </div>
 
@@ -4344,7 +4341,7 @@ the view runs</code></pre></div>
 <tr><td>Password reset link lifetime</td><td>1 hour</td><td><code>PASSWORD_RESET_TIMEOUT</code></td></tr>
 <tr><td>Minimum password length</td><td>8 characters</td><td><code>AUTH_PASSWORD_VALIDATORS</code></td></tr>
 <tr><td>Hash iterations</td><td>1,000,000 (PBKDF2-SHA256)</td><td>Django 5.2 default</td></tr>
-<tr><td>Backend port</td><td>8001 in <code>api.js</code>, 8000 in the README</td><td>Make them agree</td></tr>
+<tr><td>Backend port</td><td>8001</td><td><code>api.js</code> default, and the README&rsquo;s <code>runserver 8001</code></td></tr>
 <tr><td>Frontend port</td><td>5180</td><td><code>vite.config.js</code></td></tr>
 </tbody>
 </table>

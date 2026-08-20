@@ -1,4 +1,4 @@
-import { CircleCheck, CircleAlert } from "lucide-react";
+import { CircleCheck, CircleAlert, X } from "lucide-react";
 
 const looks = {
   error: "border-red-200 bg-red-50 text-red-700",
@@ -12,7 +12,14 @@ const icons = {
   info: null,
 };
 
-export default function Alert({ variant = "error", className = "", children }) {
+// A short-lived message. Pass onDismiss when the caller owns the message and
+// can clear it — that is what puts the close button there.
+export default function Alert({
+  variant = "error",
+  className = "",
+  onDismiss,
+  children,
+}) {
   if (!children) {
     return null;
   }
@@ -20,14 +27,27 @@ export default function Alert({ variant = "error", className = "", children }) {
   return (
     <div
       className={
-        "mb-4 flex items-start gap-2 whitespace-pre-line rounded-md border px-3 py-2 text-sm " +
+        "mb-4 flex items-start gap-2 rounded-md border py-2 pl-3 text-sm " +
+        (onDismiss ? "pr-2 " : "pr-3 ") +
         looks[variant] +
         " " +
         className
       }
     >
       {icons[variant]}
-      <span>{children}</span>
+
+      <span className="min-w-0 whitespace-pre-line">{children}</span>
+
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss message"
+          className="-my-0.5 -mr-0.5 ml-1 shrink-0 rounded p-1 opacity-60 hover:bg-black/5 hover:opacity-100"
+        >
+          <X size={14} />
+        </button>
+      )}
     </div>
   );
 }

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { KeyRound, Save } from "lucide-react";
 import { changePassword, fetchProfile, updateProfile } from "../api.js";
 import { useAuth } from "../auth.js";
-import { leaveNoticeForLogin, useFlash } from "../flash.js";
 import { roleLabel } from "../permissions.js";
 import { Alert, Button, Input, PageHeader } from "../components/index.js";
 
@@ -24,7 +23,7 @@ export default function Profile() {
   const [phone, setPhone] = useState("");
 
   const [detailsError, setDetailsError] = useState("");
-  const [detailsNotice, setDetailsNotice] = useFlash();
+  const [detailsNotice, setDetailsNotice] = useState("");
   const [isSavingDetails, setIsSavingDetails] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -91,11 +90,6 @@ export default function Profile() {
       // The old token stays technically valid until it expires, so the honest
       // thing is to end the session here and make them sign in with the new
       // password.
-      //
-      // The message is left where the sign-out redirect cannot lose it. Being
-      // dumped on the login screen with no explanation reads like a failure,
-      // when in fact the change worked.
-      leaveNoticeForLogin("Password changed. Please log in again.");
       logOut();
       navigate("/login", { replace: true });
     } catch (problem) {

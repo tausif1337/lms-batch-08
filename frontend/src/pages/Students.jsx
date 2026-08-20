@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { studentsApi } from "../api.js";
 import { useAuth } from "../auth.js";
-import { useFlash } from "../flash.js";
 import { canCreate, canWrite } from "../permissions.js";
 import {
   Alert,
@@ -28,7 +27,7 @@ export default function Students() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   // A short "Saved" line that clears itself after a few seconds.
-  const [notice, setNotice] = useFlash();
+  const [notice, setNotice] = useState("");
 
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
@@ -160,8 +159,19 @@ export default function Students() {
     <div>
       <PageHeader title="Students" subtitle="Everyone enrolled in the school." />
 
-      <Alert>{error}</Alert>
-      <Alert variant="success">{notice}</Alert>
+      <Alert
+        className="ml-auto w-fit max-w-md"
+        onDismiss={() => setError("")}
+      >
+        {error}
+      </Alert>
+      <Alert
+        variant="success"
+        className="ml-auto w-fit max-w-md"
+        onDismiss={() => setNotice("")}
+      >
+        {notice}
+      </Alert>
 
       {formIsOpen && (
         <form

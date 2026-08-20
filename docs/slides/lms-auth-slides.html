@@ -1347,7 +1347,7 @@ export function clearSession() {
     <div class="stack">
       <p><strong>Every call in the app goes through this one function</strong> — which is exactly why it can guarantee the header is there.</p>
       <ul>
-        <li><code>auth = true</code> is the <strong>default</strong>. Only four calls opt out: login, and the two halves of password reset. Defaulting to secure and opting out deliberately is the same instinct as <code>DEFAULT_PERMISSION_CLASSES</code> on the server.</li>
+        <li><code>auth = true</code> is the <strong>default</strong>. Only three calls opt out: login, and the two halves of password reset. Defaulting to secure and opting out deliberately is the same instinct as <code>DEFAULT_PERMISSION_CLASSES</code> on the server.</li>
         <li>The header is spelled <code>Authorization: Bearer &lt;token&gt;</code>. Note <strong>the space and the capital B</strong>.</li>
         <li>The <code>catch</code> fires when the request <strong>never reached a server at all</strong> — Django down, wrong port, no network. That is different from a request that arrives and is refused.</li>
       </ul>
@@ -1355,20 +1355,20 @@ export function clearSession() {
   </div>
 </section>
 
-<section class="slide" data-part="4" data-title="The port mismatch">
+<section class="slide" data-part="4" data-title="The port">
   <div class="eyebrow">Chapter 7 · The single most common "nothing works"</div>
-  <h2 class="t">8000 and 8001 must agree</h2>
+  <h2 class="t">Both ends must name the same port</h2>
   <div class="body cols">
     <div class="stack">
       <pre class="code sm">// frontend/src/api.js
 const BASE_URL = import.meta.env.VITE_API_URL
               ?? "http://127.0.0.1:8001/api";</pre>
       <pre class="code sm"># README
-python manage.py runserver     # listens on 8000</pre>
-      <p>On a fresh clone the frontend calls <strong>8001</strong> and nothing answers — and the error message names the wrong number (8000), because that string was never updated.</p>
+python manage.py runserver 8001</pre>
+      <p>Django&#39;s own default is <strong>8000</strong>. Start it there by habit and the frontend calls <strong>8001</strong>, nothing answers, and you get the frontend&#39;s own "could not reach the server" message rather than a status code.</p>
     </div>
     <div class="stack">
-      <div class="card ok"><h3 class="t">Fix it in one of two places</h3><pre class="code sm" style="margin-top:8px">python manage.py runserver 8001</pre><p style="margin:8px 0">— or —</p><pre class="code sm"># frontend/.env
+      <div class="card ok"><h3 class="t">Fix it in one of two places</h3><pre class="code sm" style="margin-top:8px">python manage.py runserver 8001</pre><p style="margin:8px 0">— or, to use any other port —</p><pre class="code sm"># frontend/.env
 VITE_API_URL=http://127.0.0.1:8000/api</pre></div>
       <div class="trap"><span class="lbl">And then</span><p><strong>Restart the Vite dev server.</strong> Environment variables are read at startup — editing <code>.env</code> with Vite already running changes nothing.</p></div>
     </div>

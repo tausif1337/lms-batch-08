@@ -26,8 +26,6 @@ GRANT ALL PRIVILEGES ON lms_db.* TO 'lms_user'@'127.0.0.1';
 
 To use different credentials, set `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, or `DB_PORT` as environment variables.
 
-The `backend/db.sqlite3` file in this repo is left over from an earlier setup and is not used by anything.
-
 ### 2. Backend
 
 ```bash
@@ -35,10 +33,10 @@ cd backend
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser   # optional, for /admin/
-python manage.py runserver
+python manage.py runserver 8001
 ```
 
-Runs on **http://127.0.0.1:8000**.
+Runs on **http://127.0.0.1:8001**. The port matters: `frontend/src/api.js` calls 8001 unless `VITE_API_URL` says otherwise.
 
 If `runserver` dies with `pywatchman.SocketTimeout: timed out waiting for response`, Django's auto-reloader is trying to use Watchman and Watchman is not answering. Start it with `python manage.py runserver --noreload` (you then have to restart it yourself after editing Python files), or raise the timeout with `DJANGO_WATCHMAN_TIMEOUT=20`.
 
@@ -54,7 +52,7 @@ Runs on **http://localhost:5180** (`frontend/vite.config.js` picks that port to 
 
 The port matters. The backend's CORS whitelist in `backend/lms/settings.py` lists 5180 and 5173 only. If Vite reports a different port because 5180 was busy, add that port there too or every API call will be blocked by the browser.
 
-The frontend talks to `http://127.0.0.1:8000/api` by default. Set `VITE_API_URL` to point it somewhere else.
+The frontend talks to `http://127.0.0.1:8001/api` by default. Set `VITE_API_URL` to point it somewhere else.
 
 ---
 
@@ -69,7 +67,7 @@ The frontend talks to `http://127.0.0.1:8000/api` by default. Set `VITE_API_URL`
 `createsuperuser` alone is **not** enough to get into the app. Login looks you up by `Profile.phone`, and `createsuperuser` does not make a Profile, so that account can reach `/admin/` and nothing else. Three steps:
 
 1. `python manage.py createsuperuser`
-2. Open http://127.0.0.1:8000/admin/backend/profile/add/, pick that user, give it a phone number, set the role to **Admin**, save.
+2. Open http://127.0.0.1:8001/admin/backend/profile/add/, pick that user, give it a phone number, set the role to **Admin**, save.
 3. Log in at http://localhost:5180/login with that phone number. The Accounts page is now available for everyone else.
 
 (A superuser *is* treated as an admin by `role_of()` — the missing piece is only the phone number to log in with.)
@@ -80,7 +78,7 @@ The frontend talks to `http://127.0.0.1:8000/api` by default. Set `VITE_API_URL`
 
 Every account carries a role on its `Profile`: **admin**, **teacher** or **student**.
 
-The admin who creates an account chooses its role; leaving the field out makes a student. To change someone's role later, open http://127.0.0.1:8000/admin/backend/profile/, change it in the list, and save. Accounts that existed before roles were added were all made admins by migration `0004`, so nobody was locked out.
+The admin who creates an account chooses its role; leaving the field out makes a student. To change someone's role later, open http://127.0.0.1:8001/admin/backend/profile/, change it in the list, and save. Accounts that existed before roles were added were all made admins by migration `0004`, so nobody was locked out.
 
 | | accounts | teacher & student records | course, lesson, assignment | enrollment | submission | results |
 |---|---|---|---|---|---|---|
@@ -193,7 +191,7 @@ These are real quirks of the API, not bugs in the frontend. Each one is commente
 
 ## API endpoints
 
-Base URL: `http://127.0.0.1:8000/api`
+Base URL: `http://127.0.0.1:8001/api`
 
 | Path | Methods | Auth |
 |---|---|---|
@@ -212,7 +210,7 @@ Base URL: `http://127.0.0.1:8000/api`
 | `/submission/`, `/submission/{id}/` | GET POST / GET PUT PATCH DELETE | Yes |
 | `/results/`, `/results/{id}/` | GET POST / GET PUT PATCH DELETE | Yes |
 
-Django admin is at http://127.0.0.1:8000/admin/ and every model is registered there, which is the quickest way to add test data.
+Django admin is at http://127.0.0.1:8001/admin/ and every model is registered there, which is the quickest way to add test data.
 
 Note the naming: `/submission/` is singular but `/results/` is plural.
 
@@ -222,4 +220,4 @@ Note the naming: `/submission/` is singular but `/results/` is plural.
 
 Password reset is not usable end to end. `EMAIL_BACKEND` is the console backend, so reset links only print to the terminal running Django, and no `/reset-password` page exists in the frontend yet. Someone who *knows* their password can change it from their profile page; someone who has forgotten it still needs an admin to reset it in Django admin.
 
-The Accounts page creates accounts but does not list them. Seeing who exists, changing a role, or deactivating somebody is done at http://127.0.0.1:8000/admin/backend/profile/.
+The Accounts page creates accounts but does not list them. Seeing who exists, changing a role, or deactivating somebody is done at http://127.0.0.1:8001/admin/backend/profile/.

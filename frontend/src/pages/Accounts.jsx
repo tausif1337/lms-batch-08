@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { UserPlus } from "lucide-react";
 import { register } from "../api.js";
-import { useFlash } from "../flash.js";
 import {
   Alert,
   Button,
@@ -23,7 +22,7 @@ export default function Accounts() {
   const [role, setRole] = useState("student");
 
   const [error, setError] = useState("");
-  const [notice, setNotice] = useFlash(8000);
+  const [notice, setNotice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   function clearForm() {
@@ -72,8 +71,19 @@ export default function Accounts() {
         subtitle="Create a login for a student, a teacher, or another admin."
       />
 
-      <Alert>{error}</Alert>
-      <Alert variant="success">{notice}</Alert>
+      <Alert
+        className="ml-auto w-fit max-w-md"
+        onDismiss={() => setError("")}
+      >
+        {error}
+      </Alert>
+      <Alert
+        variant="success"
+        className="ml-auto w-fit max-w-md"
+        onDismiss={() => setNotice("")}
+      >
+        {notice}
+      </Alert>
 
       <form
         onSubmit={handleSubmit}

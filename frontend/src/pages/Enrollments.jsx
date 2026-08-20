@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { coursesApi, enrollmentsApi, studentsApi } from "../api.js";
 import { useAuth } from "../auth.js";
-import { useFlash } from "../flash.js";
 import { canCreate, canWrite } from "../permissions.js";
 import {
   Alert,
@@ -20,7 +19,7 @@ export default function Enrollments() {
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useFlash();
+  const [notice, setNotice] = useState("");
 
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
@@ -157,8 +156,19 @@ export default function Enrollments() {
         subtitle="Which student is taking which course."
       />
 
-      <Alert>{error}</Alert>
-      <Alert variant="success">{notice}</Alert>
+      <Alert
+        className="ml-auto w-fit max-w-md"
+        onDismiss={() => setError("")}
+      >
+        {error}
+      </Alert>
+      <Alert
+        variant="success"
+        className="ml-auto w-fit max-w-md"
+        onDismiss={() => setNotice("")}
+      >
+        {notice}
+      </Alert>
 
       {formIsOpen && (
         <form
