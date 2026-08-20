@@ -576,8 +576,8 @@ p.figref {
 <li><a href="#request-line-by-line">request(), line by line</a></li>
 <li><a href="#the-auth-calls">The auth calls</a></li>
 <li><a href="#the-resource-factory">The resource() factory</a></li>
-<li><a href="#flashjs-short-messages-that-clean-up-after-themselves">flash.js: short messages that clean up after themselves</a></li>
-<li><a href="#the-one-message-that-has-to-survive-a-redirect">The one message that has to survive a redirect</a></li>
+<li><a href="#messages-and-who-takes-them-down">Messages, and who takes them down</a></li>
+
 <li><a href="#two-things-worth-knowing-about-localstorage">Two things worth knowing about localStorage</a></li>
 <li><a href="#what-you-have-now">What you have now</a></li>
 </ul>
@@ -6950,8 +6950,12 @@ curl<span class="w"> </span>-i<span class="w"> </span>-X<span class="w"> </span>
 <div class="filetab">frontend/src/pages/Teachers.jsx</div>
 
 
-<div class="codehilite"><pre><span></span><code><span class="w">      </span><span class="p">&lt;</span><span class="nt">Alert</span><span class="p">&gt;{</span><span class="nx">error</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
-<span class="w">      </span><span class="p">&lt;</span><span class="nt">Alert</span><span class="w"> </span><span class="na">variant</span><span class="o">=</span><span class="s">&quot;success&quot;</span><span class="p">&gt;{</span><span class="nx">notice</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
+<div class="codehilite"><pre><span></span><code><span class="w">      </span><span class="p">&lt;</span><span class="nt">Alert</span>
+<span class="w">        </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto w-fit max-w-md&quot;</span>
+<span class="w">        </span><span class="na">onDismiss</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setError</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)}</span>
+<span class="w">      </span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">error</span><span class="p">}</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
 </code></pre></div>
 
 
@@ -7927,7 +7931,6 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
     auth.js             the context object and the useAuth hook
     api.js              every call to the Django API lives here
     permissions.js      role names and who is allowed to do what
-    flash.js            the short-lived success messages that clear themselves
     index.css           one line, which turns Tailwind on
     components/
       index.js          re-exports the components below, for tidy imports
@@ -7996,8 +7999,8 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 <div class="chapter-kicker">Chapter 8</div>
 <h1>Talking to the Backend: api.js</h1>
 </header>
-<p>In Chapter 7 you built the React shell: the sidebar, the router, the small UI pieces. Every page in it is going to need data, and that data lives in the Django server you built in the first half of this book. This chapter builds the piece in the middle: one file that knows how to talk to Django, and one small file that handles the little green "Saved" messages.</p>
-<p>By the end of this chapter you will have written <code>frontend/src/api.js</code> and <code>frontend/src/flash.js</code> from an empty file to the finished thing.</p>
+<p>In Chapter 7 you built the React shell: the sidebar, the router, the small UI pieces. Every page in it is going to need data, and that data lives in the Django server you built in the first half of this book. This chapter builds the piece in the middle: one file that knows how to talk to Django, and the little green "Saved" messages the pages show after a save.</p>
+<p>By the end of this chapter you will have written <code>frontend/src/api.js</code> from an empty file to the finished thing.</p>
 <div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>In this book, when a code block starts with a comment like <code>// frontend/src/api.js</code>, that line is a signpost telling you which file the code belongs to. It is not a line you type, and it is not in the real file. Everything below that first comment line is the real file's content, character for character.</p></div></div>
 <h3 id="why-every-network-call-lives-in-one-file">Why every network call lives in one file</h3>
 <p>A <strong>network call</strong> is when your browser asks another computer for something. The browser sends a request over the internet (or over your own machine, in our case) and gets an answer back. The React app runs at <code>http://localhost:5180</code>. Django runs at <code>http://127.0.0.1:8001</code>. They are two separate programs. The only way the React app can see a teacher row is to ask Django for it.</p>
@@ -8761,183 +8764,44 @@ npm<span class="w"> </span>install<span class="w"> </span>tailwindcss<span class
 const { teachersApi } = await import("/src/api.js");
 console.log(await teachersApi.list());</code>
 You should see an array of teacher objects, each with <code>id</code>, <code>name</code>, <code>email</code>, <code>subject</code> and <code>is_active</code>, which are exactly the fields <code>TeacherSerializer</code> lists. That proves <code>BASE_URL</code>, the token header and the JSON parsing are all working, before a single page has been written.</p></div></div><div class="callout tip"><div class="callout-label">Tip</div><div class="callout-body"><p>Keep the Network tab of your developer tools open while clicking around. Every call from this file shows up there. Click one and look at the Headers panel: you can see the <code>Authorization: Bearer ...</code> line that <code>request()</code> added, and the Response panel shows the exact JSON that <code>readError()</code> would be reading.</p></div></div>
-<h3 id="flashjs-short-messages-that-clean-up-after-themselves">flash.js: short messages that clean up after themselves</h3>
-<p>After a save, the user should see something. A green "Teacher added." banner is enough. But a banner that never disappears is worse than none at all: add three teachers and you are looking at a stack of stale congratulations.</p>
-<p>Every page could set a timer and clear its own message, but that is the same eight lines eight times over. So it goes into one small hook.</p>
-<div class="codehilite"><pre><span></span><code>touch<span class="w"> </span>src/flash.js
-</code></pre></div>
-
-<p>A hook, as mentioned earlier, is a function whose name begins with <code>use</code> and which is allowed to use React features like state and effects. <code>useState</code> and <code>useEffect</code> are React's own. <code>useFlash</code> is ours, built out of theirs.</p>
+<h3 id="messages-and-who-takes-them-down">Messages, and who takes them down</h3>
+<p>After a save, the user should see something. A green "Student added." line is enough. But a banner that never goes away is worse than none at all: add three students and you are looking at a stack of stale congratulations.</p>
+<p>So something has to take it down again, and there are only two candidates: a timer, or the person reading it. This project uses the reader.</p>
+<p>Each page keeps its own message in ordinary state, next to the error message:</p>
 <div class="filebox" markdown="0">
-<div class="filetab">frontend/src/flash.js</div>
+<div class="filetab">frontend/src/pages/Students.jsx</div>
 
 
-<div class="codehilite"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useEffect</span><span class="p">,</span><span class="w"> </span><span class="nx">useState</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;react&quot;</span><span class="p">;</span>
-
-<span class="c1">// &quot;Saved&quot;, &quot;Updated&quot;, &quot;Deleted&quot; — a short message that clears itself, so no</span>
-<span class="c1">// page has to remember to take it back down.</span>
-<span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">useFlash</span><span class="p">(</span><span class="nx">millisecondsOnScreen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">4000</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">message</span><span class="p">,</span><span class="w"> </span><span class="nx">setMessage</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+<div class="codehilite"><pre><span></span><code><span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">error</span><span class="p">,</span><span class="w"> </span><span class="nx">setError</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
+<span class="w">  </span><span class="c1">// A short &quot;Saved&quot; line. It stays until the reader closes it — see the</span>
+<span class="w">  </span><span class="c1">// onDismiss passed to &lt;Alert&gt; in step 6.</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">,</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
 </code></pre></div>
-
 
 
 </div>
-
-<p><code>useState("")</code> gives back two things: the current message, and a function to change it. Starting at an empty string means no banner, because <code>Alert.jsx</code> returns <code>null</code> when <code>children</code> is empty.</p>
-<p>The default of <code>4000</code> is four seconds. Callers can ask for longer.</p>
-<p>The effect is where the disappearing happens:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/flash.js  (useFlash, continued)</span>
-<span class="w">  </span><span class="nx">useEffect</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="k">return</span><span class="p">;</span>
-<span class="w">    </span><span class="p">}</span>
-
-<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">timer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">setTimeout</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setMessage</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">),</span><span class="w"> </span><span class="nx">millisecondsOnScreen</span><span class="p">);</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">clearTimeout</span><span class="p">(</span><span class="nx">timer</span><span class="p">);</span>
-<span class="w">  </span><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="nx">message</span><span class="p">,</span><span class="w"> </span><span class="nx">millisecondsOnScreen</span><span class="p">]);</span>
-
-<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">[</span><span class="nx">message</span><span class="p">,</span><span class="w"> </span><span class="nx">setMessage</span><span class="p">];</span>
-<span class="p">}</span>
-</code></pre></div>
-
-<p><code>useEffect</code> runs code after React has drawn the screen. The array at the end, <code>[message, millisecondsOnScreen]</code>, is the <strong>dependency list</strong>: React re-runs the effect whenever one of those values changes. So every new message starts a fresh countdown.</p>
-<p><code>if (!message) return;</code> skips everything when there is nothing on screen. No message, no timer.</p>
-<p><code>setTimeout(fn, ms)</code> is the browser's "run this once, later." Here it sets the message back to empty after four seconds, and React re-renders without the banner.</p>
-<p>The returned function is the cleanup, and it matters more than it looks. React runs it before the <em>next</em> run of the effect, and again when the component is removed from the screen. Two real problems it prevents:</p>
-<ul>
-<li>The user saves twice quickly. Without cleanup, the first timer is still counting and would blank the second message early. <code>clearTimeout</code> cancels it, so the second message gets its full four seconds.</li>
-<li>The user navigates away one second after saving. Without cleanup, the timer still fires three seconds later and calls <code>setMessage</code> on a component that no longer exists.</li>
-</ul>
-<p>The last line returns <code>[message, setMessage]</code> as an array, deliberately matching the shape of <code>useState</code>. That is why using it looks so ordinary:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/pages/Teachers.jsx  (an excerpt, for context)</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">,</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useFlash</span><span class="p">();</span>
-</code></pre></div>
-
-<p>Swap <code>useState("")</code> for <code>useFlash()</code> and the message now cleans itself up. Nothing else in the page changes. The Accounts page asks for longer, because its message contains a phone number the admin may want to write down:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/pages/Accounts.jsx  (an excerpt, for context)</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">,</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useFlash</span><span class="p">(</span><span class="mf">8000</span><span class="p">);</span>
-</code></pre></div>
-
-<figure class="shot" id="fig-ss-teachers-success"><img src="images/ss-teachers-success.png" alt="The green &quot;Teacher added.&quot; banner that useFlash clears on its own after four seconds."><figcaption><span class="fignum">Figure 8.1</span> The green &quot;Teacher added.&quot; banner that useFlash clears on its own after four seconds.</figcaption></figure>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Add a teacher. The green "Teacher added." banner appears, and disappears on its own after about four seconds. Now add two teachers in quick succession: the second banner should stay up for its own full four seconds, not vanish early on the first one's timer. That is <code>clearTimeout</code> doing its job.</p></div></div>
-<h3 id="the-one-message-that-has-to-survive-a-redirect">The one message that has to survive a redirect</h3>
-<p>There is a second problem in <code>flash.js</code>, and it is a different shape.</p>
-<p>When a user changes their password on the Profile page, the app signs them out on purpose. The old token stays technically valid on the server until it expires, so ending the session is the honest thing to do. Being dumped on the login screen with no explanation, however, reads like a failure, when in fact the change worked.</p>
-<p>So a message needs to travel from the Profile page to the login page, across a sign-out.</p>
-<p>The obvious tool is router state. react-router-dom lets you attach data to a navigation, and <code>Login.jsx</code> already reads <code>location.state?.from</code> that way. It does not work here, and the comment in the real file explains exactly why:</p>
+<p>and hands <code>Alert</code> a way to clear it:</p>
 <div class="filebox" markdown="0">
-<div class="filetab">frontend/src/flash.js</div>
+<div class="filetab">frontend/src/pages/Students.jsx</div>
 
 
-<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">HANDOFF_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lms_handoff_notice&quot;</span><span class="p">;</span>
-
-<span class="c1">// A message that has to survive both a page change and a sign-out.</span>
-<span class="c1">//</span>
-<span class="c1">// Router state cannot carry this. Signing out re-renders whatever page you</span>
-<span class="c1">// were on inside ProtectedRoute, which fires its own redirect to /login and</span>
-<span class="c1">// replaces the history entry — throwing away any state that came with it. So</span>
-<span class="c1">// the message goes somewhere the redirect cannot touch, and the login page</span>
-<span class="c1">// takes it exactly once.</span>
+<div class="codehilite"><pre><span></span><code><span class="w">      </span><span class="p">&lt;</span><span class="nt">Alert</span>
+<span class="w">        </span><span class="na">variant</span><span class="o">=</span><span class="s">&quot;success&quot;</span>
+<span class="w">        </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto w-fit max-w-md&quot;</span>
+<span class="w">        </span><span class="na">onDismiss</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)}</span>
+<span class="w">      </span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">notice</span><span class="p">}</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
 </code></pre></div>
-
 
 
 </div>
-
-<p>Read that carefully, because it is a genuinely confusing sequence. <code>logOut()</code> sets <code>isLoggedIn</code> to false. That re-renders the Profile page, which is wrapped in <code>ProtectedRoute</code>. <code>ProtectedRoute</code> sees a logged-out user and returns a <code>&lt;Navigate to="/login" replace ... /&gt;</code> all by itself. That redirect happens first, and it carries only the <code>from</code> path, not our message. Our own <code>navigate("/login")</code> call, state or no state, is not the navigation that wins.</p>
-<p>The fix is to put the message somewhere no redirect can reach:</p>
-<div class="filebox" markdown="0">
-<div class="filetab">frontend/src/flash.js</div>
-
-
-<div class="codehilite"><pre><span></span><code><span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">leaveNoticeForLogin</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">setItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">,</span><span class="w"> </span><span class="nx">message</span><span class="p">);</span>
-<span class="p">}</span>
-
-<span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">takeNoticeLeftForLogin</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">);</span>
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">removeItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">);</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div>
-
-
-
-</div>
-
-<p><strong><code>sessionStorage</code></strong> is <code>localStorage</code>'s short-lived twin. Same two functions, <code>setItem</code> and <code>getItem</code>, same text-only storage. The difference is lifetime: <code>sessionStorage</code> is emptied when the tab is closed. A one-time note between two screens should not still be sitting there tomorrow, so <code>sessionStorage</code> is the right shelf.</p>
-<p><code>takeNoticeLeftForLogin</code> is named "take" rather than "get" for a reason: reading removes. Without the <code>removeItem</code>, the login page would show "Password changed. Please log in again." every time it was visited for the rest of the session, long after it stopped being true. The <code>?? ""</code> at the end turns a missing value into an empty string, so <code>Alert</code> gets text it can handle rather than <code>null</code>.</p>
-<p>The two halves in the real pages. Profile leaves the note, then signs out:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/pages/Profile.jsx  (an excerpt, for context)</span>
-<span class="w">      </span><span class="nx">leaveNoticeForLogin</span><span class="p">(</span><span class="s2">&quot;Password changed. Please log in again.&quot;</span><span class="p">);</span>
-<span class="w">      </span><span class="nx">logOut</span><span class="p">();</span>
-<span class="w">      </span><span class="nx">navigate</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">replace</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">});</span>
-</code></pre></div>
-
-<p>And Login picks it up:</p>
-<div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/pages/Login.jsx  (an excerpt, for context)</span>
-<span class="w">  </span><span class="c1">// Left by the profile page after a password change, so the sign-out that</span>
-<span class="w">  </span><span class="c1">// follows does not look like something went wrong. Read once, on the first</span>
-<span class="w">  </span><span class="c1">// render, and cleared as it is read.</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">takeNoticeLeftForLogin</span><span class="p">());</span>
-</code></pre></div>
-
-<p>Passing a function to <code>useState</code> rather than a value is called <strong>lazy initial state</strong>. React calls that function once, on the very first render, and never again. If it were written <code>useState(takeNoticeLeftForLogin())</code>, the function would run on every render, and since it deletes as it reads, the note would be gone before it ever made it to the screen. Only <code>notice</code> is destructured out, with no setter, because nothing on the login page ever changes this message.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Log in, go to Your profile, change your password. You should be sent to the login screen with a green banner reading "Password changed. Please log in again." Log in with the new password. Now navigate to the login page again by any other route: the green banner is gone. That is <code>removeItem</code> inside <code>takeNoticeLeftForLogin</code>.</p></div></div>
-<p><code>flash.js</code> is 39 lines, so here is the finished file whole:</p>
-<div class="filebox" markdown="0">
-<div class="filetab">frontend/src/flash.js</div>
-
-
-<div class="codehilite"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useEffect</span><span class="p">,</span><span class="w"> </span><span class="nx">useState</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;react&quot;</span><span class="p">;</span>
-
-<span class="kd">const</span><span class="w"> </span><span class="nx">HANDOFF_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lms_handoff_notice&quot;</span><span class="p">;</span>
-
-<span class="c1">// A message that has to survive both a page change and a sign-out.</span>
-<span class="c1">//</span>
-<span class="c1">// Router state cannot carry this. Signing out re-renders whatever page you</span>
-<span class="c1">// were on inside ProtectedRoute, which fires its own redirect to /login and</span>
-<span class="c1">// replaces the history entry — throwing away any state that came with it. So</span>
-<span class="c1">// the message goes somewhere the redirect cannot touch, and the login page</span>
-<span class="c1">// takes it exactly once.</span>
-<span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">leaveNoticeForLogin</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">setItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">,</span><span class="w"> </span><span class="nx">message</span><span class="p">);</span>
-<span class="p">}</span>
-
-<span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">takeNoticeLeftForLogin</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">);</span>
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">removeItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">);</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">;</span>
-<span class="p">}</span>
-
-<span class="c1">// &quot;Saved&quot;, &quot;Updated&quot;, &quot;Deleted&quot; — a short message that clears itself, so no</span>
-<span class="c1">// page has to remember to take it back down.</span>
-<span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">useFlash</span><span class="p">(</span><span class="nx">millisecondsOnScreen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">4000</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">message</span><span class="p">,</span><span class="w"> </span><span class="nx">setMessage</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
-
-<span class="w">  </span><span class="nx">useEffect</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="k">return</span><span class="p">;</span>
-<span class="w">    </span><span class="p">}</span>
-
-<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">timer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">setTimeout</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setMessage</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">),</span><span class="w"> </span><span class="nx">millisecondsOnScreen</span><span class="p">);</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">clearTimeout</span><span class="p">(</span><span class="nx">timer</span><span class="p">);</span>
-<span class="w">  </span><span class="p">},</span><span class="w"> </span><span class="p">[</span><span class="nx">message</span><span class="p">,</span><span class="w"> </span><span class="nx">millisecondsOnScreen</span><span class="p">]);</span>
-
-<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">[</span><span class="nx">message</span><span class="p">,</span><span class="w"> </span><span class="nx">setMessage</span><span class="p">];</span>
-<span class="p">}</span>
-</code></pre></div>
-
-
-
-</div>
-
-<p><code>api.js</code> is 210 lines, too long to reprint, but you have now built every part of it in order: the base address, the four session helpers, <code>readError</code>, <code>handleExpiredToken</code>, <code>request</code>, the seven auth calls, <code>resource</code>, and the eight exported objects. Read it end to end in your editor once before moving on. It should look familiar all the way down.</p>
+<p>That is the whole mechanism. <code>setNotice("Student added.")</code> after a successful save puts the banner on screen; <code>Alert</code> draws a small × because it was given an <code>onDismiss</code>, and clicking it sets the message back to an empty string. <code>Alert</code> returns <code>null</code> when its <code>children</code> are empty, so an empty message is no banner at all. Chapter 10 builds that component.</p>
+<div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>An earlier version of this project had a <code>src/flash.js</code> holding a <code>useFlash()</code> hook: the same <code>useState</code>, plus a <code>setTimeout</code> that blanked the message after four seconds. It worked, and it is a good exercise in <code>useEffect</code> cleanup, but a timer is a guess about how fast somebody reads. Four seconds is not enough for a message with a phone number in it — the Accounts page had to ask for eight — and no number is right for a reader who looked away. A close button is not a guess, and it takes with it a whole class of bug: timers that fire after the component has gone. If you see <code>useFlash</code> in an older copy of this code, that is what it was.</p></div></div>
+<figure class="shot" id="fig-ss-teachers-success"><img src="images/ss-teachers-success.png" alt="The green &quot;Teacher added.&quot; banner after a save."><figcaption><span class="fignum">Figure 8.1</span> The green "Teacher added." banner after a save. The screenshot was taken before the banner gained its close button, so it sits full width and without the &times;.</figcaption></figure>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Add a teacher. The green "Teacher added." banner appears and stays. Click the × on the right of it and it goes. Add two teachers without closing the first message: the second one replaces it, because both writes go to the same piece of state.</p></div></div>
+<div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p>Setting a notice and never clearing it anywhere else. Nothing is on a timer any more, so a message you set on save is still there when the user opens the form again, reading like it just happened. If a page ever needs the banner gone without a click, clear it in code — <code>setNotice("")</code> — at the point the old message stops being true.</p></div></div>
+<div class="callout note"><div class="callout-label">One message this app does not carry</div><div class="callout-body"><p>Changing your password on the Profile page signs you out on purpose (Chapter 12.9), and the login screen you land on says nothing about why. Carrying an explanation across that sign-out is harder than it looks: <code>logOut()</code> re-renders the page you were on inside <code>ProtectedRoute</code>, which fires its own redirect to <code>/login</code> and replaces the history entry, throwing away any state travelling with your own <code>navigate()</code> call. The message has to be parked somewhere the redirect cannot reach — <code>sessionStorage</code> is the usual shelf — and taken exactly once, so it does not reappear on the next visit. This project used to do that and no longer does; if you want the explanation back, that is the shape of it.</p></div></div>
 <h3 id="two-things-worth-knowing-about-localstorage">Two things worth knowing about localStorage</h3>
 <div class="callout note"><div class="callout-label">Note</div><div class="callout-body"><p>A token in <code>localStorage</code> can be read by any JavaScript running on the page. That includes a badly chosen npm package. The safer alternative is an <code>HttpOnly</code> cookie, which is a cookie the browser will send to the server but will not let JavaScript read. Using one needs extra work on the Django side, including protection against cross-site request forgery, where another website tricks your browser into sending a request with your cookie attached. This project uses <code>localStorage</code> because it is the simplest thing that works while you are learning. Know the trade-off before you put something like this in front of real users.</p></div></div><div class="callout mistake"><div class="callout-label">Common mistake</div><div class="callout-body"><p><code>localStorage</code> is stored per origin, and <code>http://localhost:5180</code> and <code>http://127.0.0.1:5180</code> count as two different origins even though they reach the same server. Log in at one address and you will appear logged out at the other, with two separate tokens sitting in two separate stores. Pick one address and stay on it.</p></div></div>
 <h3 id="what-you-have-now">What you have now</h3>
@@ -8950,8 +8814,8 @@ You should see an array of teacher objects, each with <code>id</code>, <code>nam
 <li><code>request()</code>, which attaches the <code>Bearer</code> token, sets <code>Content-Type</code> only when there is a body, handles 401 and 204, parses the body defensively, and throws a readable <code>Error</code> for anything that failed</li>
 <li>Seven auth functions, three of them passing <code>auth: false</code> because there is no token yet, and <code>register</code> deliberately passing the admin's token because there is no public sign-up</li>
 <li><code>resource()</code> producing <code>list</code>, <code>create</code>, <code>update</code> and <code>remove</code> for a path, and the eight exported objects built from it, including the plural <code>resource("results")</code></li>
-<li><code>frontend/src/flash.js</code> with <code>useFlash()</code>, a self-clearing green banner with a cancelled timer on cleanup</li>
-<li><code>leaveNoticeForLogin()</code> and <code>takeNoticeLeftForLogin()</code>, carrying one message through a sign-out in <code>sessionStorage</code>, where the router's own redirect cannot lose it</li>
+<li>The per-page notice: an ordinary <code>useState("")</code>, cleared by the reader through <code>Alert</code>&rsquo;s <code>onDismiss</code></li>
+
 </ul>
 </section>
 
@@ -9803,7 +9667,6 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useLocation</span><span class="p">,</span><span class="w"> </span><span class="nx">useNavigate</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;react-router-dom&quot;</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">GraduationCap</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;lucide-react&quot;</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useAuth</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;../auth.js&quot;</span><span class="p">;</span>
-<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">takeNoticeLeftForLogin</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;../flash.js&quot;</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Alert</span><span class="p">,</span><span class="w"> </span><span class="nx">Button</span><span class="p">,</span><span class="w"> </span><span class="nx">Input</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;../components/index.js&quot;</span><span class="p">;</span>
 </code></pre></div>
 
@@ -9846,22 +9709,7 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 </div>
 
 <p>Here is the other end of the <code>state={{ from: location.pathname }}</code> you wrote in <code>ProtectedRoute</code>. Someone who typed <code>/results</code> while signed out was redirected here carrying <code>from: "/results"</code>, so after logging in they land on Results. Somebody who came to <code>/login</code> directly has no state, <code>location.state?.from</code> is <code>undefined</code>, and <code>??</code> falls back to <code>/</code>, the dashboard.</p>
-<div class="filebox" markdown="0">
-<div class="filetab">frontend/src/pages/Login.jsx</div>
 
-
-<div class="codehilite"><pre><span></span><code><span class="w">  </span><span class="c1">// Left by the profile page after a password change, so the sign-out that</span>
-<span class="w">  </span><span class="c1">// follows does not look like something went wrong. Read once, on the first</span>
-<span class="w">  </span><span class="c1">// render, and cleared as it is read.</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">takeNoticeLeftForLogin</span><span class="p">());</span>
-</code></pre></div>
-
-
-
-</div>
-
-<p>This handles one specific moment. When you change your password on the profile page, <code>Profile.jsx</code> calls <code>leaveNoticeForLogin("Password changed. Please log in again.")</code> and then <code>logOut()</code>, so you can prove the new password works. Without a message, being dumped on the login screen looks like a failure. <code>flash.js</code> writes that short line into <code>sessionStorage</code> (the same idea as <code>localStorage</code>, except the browser wipes it when the tab closes), and <code>takeNoticeLeftForLogin()</code> reads it and deletes it in the same call.</p>
-<p>Note the shape: <code>const [notice] = useState(...)</code> takes only the first item of the pair and never the setter, because nothing ever changes this value. The lazy initialiser matters more than usual here, since the function has a side effect (it deletes the stored message). Running it on every render would be wrong; running it once on the first render is exactly right. And because the message is consumed as it is read, refreshing the login page makes it disappear, which is what you want.</p>
 <h4 id="the-submit-handler">The submit handler</h4>
 <div class="filebox" markdown="0">
 <div class="filetab">frontend/src/pages/Login.jsx</div>
@@ -9902,8 +9750,7 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <div class="filetab">frontend/src/pages/Login.jsx</div>
 
 
-<div class="codehilite"><pre><span></span><code><span class="w">        </span><span class="p">&lt;</span><span class="nt">Alert</span><span class="w"> </span><span class="na">variant</span><span class="o">=</span><span class="s">&quot;success&quot;</span><span class="p">&gt;{</span><span class="nx">notice</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
-<span class="w">        </span><span class="p">&lt;</span><span class="nt">Alert</span><span class="p">&gt;{</span><span class="nx">error</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
+<div class="codehilite"><pre><span></span><code><span class="w">        </span><span class="p">&lt;</span><span class="nt">Alert</span><span class="p">&gt;{</span><span class="nx">error</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
 </code></pre></div>
 
 
@@ -10434,7 +10281,7 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <h3 id="alert-the-red-and-green-banners">Alert: the red and green banners</h3>
 <p>Most pages stack two of these near the top. One shows API errors in red. One shows "Teacher added." in green. Twelve of the thirteen pages render at least one, they should look the same everywhere, and they should disappear completely when there is nothing to say.</p>
 <div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/components/Alert.jsx  (top)</span>
-<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">CircleCheck</span><span class="p">,</span><span class="w"> </span><span class="nx">CircleAlert</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;lucide-react&quot;</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">CircleCheck</span><span class="p">,</span><span class="w"> </span><span class="nx">CircleAlert</span><span class="p">,</span><span class="w"> </span><span class="nx">X</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;lucide-react&quot;</span><span class="p">;</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">looks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nx">error</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;border-red-200 bg-red-50 text-red-700&quot;</span><span class="p">,</span>
@@ -10452,7 +10299,14 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <p>Two lookup objects this time, keyed by the same three names. <code>icons</code> holds actual JSX in a plain object, which is allowed, because JSX is just a value like any other. <code>info</code> maps to <code>null</code>, and rendering <code>null</code> in React draws nothing, so the info variant simply has no icon.</p>
 <p>Now the component:</p>
 <div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/components/Alert.jsx  (bottom)</span>
-<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">Alert</span><span class="p">({</span><span class="w"> </span><span class="nx">variant</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">className</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">children</span><span class="w"> </span><span class="p">})</span><span class="w"> </span><span class="p">{</span>
+<span class="c1">// A short-lived message. Pass onDismiss when the caller owns the message and</span>
+<span class="c1">// can clear it — that is what puts the close button there.</span>
+<span class="k">export</span><span class="w"> </span><span class="k">default</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">Alert</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">variant</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;error&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">className</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">onDismiss</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">children</span><span class="p">,</span>
+<span class="p">})</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">children</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
 <span class="w">  </span><span class="p">}</span>
@@ -10460,14 +10314,27 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="p">&lt;</span><span class="nt">div</span>
 <span class="w">      </span><span class="na">className</span><span class="o">=</span><span class="p">{</span>
-<span class="w">        </span><span class="s2">&quot;mb-4 flex items-start gap-2 whitespace-pre-line rounded-md border px-3 py-2 text-sm &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s2">&quot;mb-4 flex items-start gap-2 rounded-md border py-2 pl-3 text-sm &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="p">(</span><span class="nx">onDismiss</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s2">&quot;pr-2 &quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;pr-3 &quot;</span><span class="p">)</span><span class="w"> </span><span class="o">+</span>
 <span class="w">        </span><span class="nx">looks</span><span class="p">[</span><span class="nx">variant</span><span class="p">]</span><span class="w"> </span><span class="o">+</span>
 <span class="w">        </span><span class="s2">&quot; &quot;</span><span class="w"> </span><span class="o">+</span>
 <span class="w">        </span><span class="nx">className</span>
 <span class="w">      </span><span class="p">}</span>
 <span class="w">    </span><span class="p">&gt;</span>
 <span class="w">      </span><span class="p">{</span><span class="nx">icons</span><span class="p">[</span><span class="nx">variant</span><span class="p">]}</span>
-<span class="w">      </span><span class="p">&lt;</span><span class="nt">span</span><span class="p">&gt;{</span><span class="nx">children</span><span class="p">}&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">span</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;min-w-0 whitespace-pre-line&quot;</span><span class="p">&gt;{</span><span class="nx">children</span><span class="p">}&lt;/</span><span class="nt">span</span><span class="p">&gt;</span>
+
+<span class="w">      </span><span class="p">{</span><span class="nx">onDismiss</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="p">&lt;</span><span class="nt">button</span>
+<span class="w">          </span><span class="na">type</span><span class="o">=</span><span class="s">&quot;button&quot;</span>
+<span class="w">          </span><span class="na">onClick</span><span class="o">=</span><span class="p">{</span><span class="nx">onDismiss</span><span class="p">}</span>
+<span class="w">          </span><span class="na">aria-label</span><span class="o">=</span><span class="s">&quot;Dismiss message&quot;</span>
+<span class="w">          </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;-my-0.5 -mr-0.5 ml-1 shrink-0 rounded p-1 opacity-60 hover:bg-black/5 hover:opacity-100&quot;</span>
+<span class="w">        </span><span class="p">&gt;</span>
+<span class="w">          </span><span class="p">&lt;</span><span class="nt">X</span><span class="w"> </span><span class="na">size</span><span class="o">=</span><span class="p">{</span><span class="mf">14</span><span class="p">}</span><span class="w"> </span><span class="p">/&gt;</span>
+<span class="w">        </span><span class="p">&lt;/</span><span class="nt">button</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="p">)}</span>
 <span class="w">    </span><span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
 <span class="w">  </span><span class="p">);</span>
 <span class="p">}</span>
@@ -10479,21 +10346,31 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <div class="filetab">frontend/src/pages/Teachers.jsx</div>
 
 
-<div class="codehilite"><pre><span></span><code><span class="p">&lt;</span><span class="nt">Alert</span><span class="p">&gt;{</span><span class="nx">error</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
-<span class="p">&lt;</span><span class="nt">Alert</span><span class="w"> </span><span class="na">variant</span><span class="o">=</span><span class="s">&quot;success&quot;</span><span class="p">&gt;{</span><span class="nx">notice</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
+<div class="codehilite"><pre><span></span><code><span class="p">&lt;</span><span class="nt">Alert</span><span class="w"> </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto w-fit max-w-md&quot;</span><span class="w"> </span><span class="na">onDismiss</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setError</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)}&gt;</span>
+<span class="w">  </span><span class="p">{</span><span class="nx">error</span><span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">Alert</span>
+<span class="w">  </span><span class="na">variant</span><span class="o">=</span><span class="s">&quot;success&quot;</span>
+<span class="w">  </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto w-fit max-w-md&quot;</span>
+<span class="w">  </span><span class="na">onDismiss</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)}</span>
+<span class="p">&gt;</span>
+<span class="w">  </span><span class="p">{</span><span class="nx">notice</span><span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
 </code></pre></div>
 
 
 
 </div>
 
-<p>Note the default: <code>variant = "error"</code>, so the plain <code>&lt;Alert&gt;</code> with no variant is the red one. Errors are the common case, so they got the default.</p>
+<p>Note the default: <code>variant = "error"</code>, so an <code>&lt;Alert&gt;</code> with no variant is the red one. Errors are the common case, so they got the default.</p>
+<p><code>onDismiss</code> is the other half of the arrangement, and it is optional on purpose. <code>Alert</code> has no state of its own: it does not know how to make a message go away, because the message does not belong to it. What it can do is offer a button, and the page decides what that button means — here, <code>() =&gt; setNotice("")</code>, which empties the state the message came from and so unrenders the banner on the next draw. <code>{onDismiss &amp;&amp; (...)}</code> is the same "false draws nothing" trick used in the sidebar: no handler, no button. A banner nobody can clear should not pretend otherwise.</p>
+<p>The padding changes with it. <code>py-2 pl-3</code> is fixed, and the right-hand padding is <code>pr-2</code> when there is a button and <code>pr-3</code> when there is not, so the × sits closer to the edge than the text would. <code>ml-1</code> and the two negative margins pull the button tight into the corner without making the banner taller. The pages add <code>className="ml-auto w-fit max-w-md"</code>, which stops the banner spanning the whole page: <code>w-fit</code> shrinks it to its text, <code>max-w-md</code> caps that, and <code>ml-auto</code> pushes it to the right.</p>
 <p><code>whitespace-pre-line</code> in the class list is there for a specific reason. When Django REST Framework rejects several fields at once, the <code>readError</code> function in <code>api.js</code> joins the complaints with a newline character:</p>
 <div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/api.js  (last line of readError)</span>
 <span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">parts</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="s2">&quot;\n&quot;</span><span class="p">);</span>
 </code></pre></div>
 
-<p>Browsers normally collapse newlines in HTML into a single space, which would run every complaint into one long line. <code>whitespace-pre-line</code> tells the browser to honour them. <code>items-start</code> keeps the icon aligned to the first line rather than floating in the vertical middle of a three-line message, and <code>shrink-0</code> on the icon stops a long message from squashing it.</p>
+<p>Browsers normally collapse newlines in HTML into a single space, which would run every complaint into one long line. <code>whitespace-pre-line</code> on the <code>&lt;span&gt;</code> tells the browser to honour them, and <code>min-w-0</code> lets that span shrink inside the flex row instead of forcing the banner wider than its <code>max-w-md</code>. <code>items-start</code> keeps the icon aligned to the first line rather than floating in the vertical middle of a three-line message, and <code>shrink-0</code> on the icon — and on the close button — stops a long message from squashing either of them.</p>
 <table>
 <thead>
 <tr>
@@ -10515,6 +10392,12 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <td>string</td>
 <td><code>""</code></td>
 <td>Extra classes</td>
+</tr>
+<tr>
+<td><code>onDismiss</code></td>
+<td>function</td>
+<td>none</td>
+<td>Called when the close button is clicked. Leave it out and no close button is drawn</td>
 </tr>
 <tr>
 <td><code>children</code></td>
@@ -11499,9 +11382,9 @@ touch<span class="w"> </span>src/components/ProtectedRoute.jsx
 <td>the signed-in user, including their role</td>
 </tr>
 <tr>
-<td><code>useFlash</code></td>
-<td><code>frontend/src/flash.js</code></td>
-<td>a short message that clears itself</td>
+<td><code>useState</code></td>
+<td>React</td>
+<td>every piece of state on the page, the notice included</td>
 </tr>
 <tr>
 <td><code>canCreate</code>, <code>canWrite</code></td>
@@ -11619,7 +11502,6 @@ touch<span class="w"> </span>src/pages/Students.jsx
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">Pencil</span><span class="p">,</span><span class="w"> </span><span class="nx">Plus</span><span class="p">,</span><span class="w"> </span><span class="nx">Trash2</span><span class="p">,</span><span class="w"> </span><span class="nx">X</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;lucide-react&quot;</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">studentsApi</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;../api.js&quot;</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useAuth</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;../auth.js&quot;</span><span class="p">;</span>
-<span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">useFlash</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;../flash.js&quot;</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">canCreate</span><span class="p">,</span><span class="w"> </span><span class="nx">canWrite</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">&quot;../permissions.js&quot;</span><span class="p">;</span>
 </code></pre></div>
 
@@ -11632,7 +11514,7 @@ touch<span class="w"> </span>src/pages/Students.jsx
 <li><code>useState</code> and <code>useEffect</code> are the two React <strong>hooks</strong> we need. A hook is a function whose name starts with <code>use</code>, which React lets you call at the top of a component to give that component a memory or a behaviour.</li>
 <li><code>lucide-react</code> is the icon set listed in <code>frontend/package.json</code>. <code>Pencil</code>, <code>Plus</code>, <code>Trash2</code> and <code>X</code> are four small drawings, used as React components.</li>
 <li><code>../api.js</code> means "go up one folder, then open api.js". We are in <code>src/pages/</code>, so <code>..</code> is <code>src/</code>.</li>
-<li><code>useAuth</code> gives us the signed-in user. <code>useFlash</code> gives us the self-clearing green message. <code>canCreate</code> and <code>canWrite</code> answer permission questions.</li>
+<li><code>useAuth</code> gives us the signed-in user. <code>canCreate</code> and <code>canWrite</code> answer permission questions.</li>
 </ul>
 <p>Then the shared UI pieces, imported in one block from the components folder:</p>
 <div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/pages/Students.jsx  (continuing the imports)</span>
@@ -11692,11 +11574,12 @@ touch<span class="w"> </span>src/pages/Students.jsx
 <p><strong>Why loading is a piece of state.</strong> Talking to a server takes time. Somewhere between a few milliseconds and a few seconds pass between "the page opened" and "the rows arrived". During that gap <code>students</code> is <code>[]</code>, which looks exactly like "there are no students". Those are two different facts and the user deserves to be told which one is true. So the page keeps a separate true/false value: <code>isLoading</code> starts <code>true</code>, and is set to <code>false</code> once the answer comes back, whether it worked or failed. In step 6 it decides between showing <code>Loading...</code> and showing <code>3 students</code>.</p>
 <h4 id="the-green-banner">The green banner</h4>
 <div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/pages/Students.jsx  (step 1, continued)</span>
-<span class="w">  </span><span class="c1">// A short &quot;Saved&quot; line that clears itself after a few seconds.</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">,</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useFlash</span><span class="p">();</span>
+<span class="w">  </span><span class="c1">// A short &quot;Saved&quot; line. It stays until the reader closes it — see the</span>
+<span class="w">  </span><span class="c1">// onDismiss passed to &lt;Alert&gt; in step 6.</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">,</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
 </code></pre></div>
 
-<p><code>useFlash</code> is a <strong>custom hook</strong>: a function of your own that calls React's hooks inside it. It behaves like <code>useState("")</code>, with one addition. Its own <code>useEffect</code> starts a 4 second timer whenever the message is non-empty, and clears the message when the timer fires. That is why no code in this page ever has to remember to take the green banner down.</p>
+<p>Two messages, two pieces of state, both starting empty. <code>error</code> is red and <code>notice</code> is green, and <code>Alert</code> draws nothing at all while its message is an empty string. Neither one goes away by itself: step 6 hands each <code>Alert</code> an <code>onDismiss</code> that sets its message back to <code>""</code>, which is what puts the small &times; on the banner and what the reader clicks.</p>
 <h4 id="permissions-decide-whether-buttons-exist">Permissions decide whether buttons exist</h4>
 <div class="codehilite"><pre><span></span><code><span class="c1">// frontend/src/pages/Students.jsx  (step 1, continued)</span>
 <span class="w">  </span><span class="c1">// The server enforces this too. Hiding the buttons just keeps the page</span>
@@ -11989,8 +11872,19 @@ touch<span class="w"> </span>src/pages/Students.jsx
 <span class="w">    </span><span class="p">&lt;</span><span class="nt">div</span><span class="p">&gt;</span>
 <span class="w">      </span><span class="p">&lt;</span><span class="nt">PageHeader</span><span class="w"> </span><span class="na">title</span><span class="o">=</span><span class="s">&quot;Students&quot;</span><span class="w"> </span><span class="na">subtitle</span><span class="o">=</span><span class="s">&quot;Everyone enrolled in the school.&quot;</span><span class="w"> </span><span class="p">/&gt;</span>
 
-<span class="w">      </span><span class="p">&lt;</span><span class="nt">Alert</span><span class="p">&gt;{</span><span class="nx">error</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
-<span class="w">      </span><span class="p">&lt;</span><span class="nt">Alert</span><span class="w"> </span><span class="na">variant</span><span class="o">=</span><span class="s">&quot;success&quot;</span><span class="p">&gt;{</span><span class="nx">notice</span><span class="p">}&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">Alert</span>
+<span class="w">        </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto w-fit max-w-md&quot;</span>
+<span class="w">        </span><span class="na">onDismiss</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setError</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)}</span>
+<span class="w">      </span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">error</span><span class="p">}</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
+<span class="w">      </span><span class="p">&lt;</span><span class="nt">Alert</span>
+<span class="w">        </span><span class="na">variant</span><span class="o">=</span><span class="s">&quot;success&quot;</span>
+<span class="w">        </span><span class="na">className</span><span class="o">=</span><span class="s">&quot;ml-auto w-fit max-w-md&quot;</span>
+<span class="w">        </span><span class="na">onDismiss</span><span class="o">=</span><span class="p">{()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)}</span>
+<span class="w">      </span><span class="p">&gt;</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">notice</span><span class="p">}</span>
+<span class="w">      </span><span class="p">&lt;/</span><span class="nt">Alert</span><span class="p">&gt;</span>
 </code></pre></div>
 
 <p>Two <code>Alert</code>s, always written into the JSX, usually invisible. The first thing <code>Alert.jsx</code> does inside its function is <code>if (!children) { return null; }</code>, and returning <code>null</code> from a component means "draw nothing". So an empty string produces no element, no gap, no border. The first <code>Alert</code> has no <code>variant</code>, and the default in <code>Alert.jsx</code> is <code>error</code>, which is the red styling. The second passes <code>variant="success"</code> for green.</p>
@@ -12212,7 +12106,7 @@ npm<span class="w"> </span>run<span class="w"> </span>dev
 </code></pre></div>
 
 <p><code>frontend/vite.config.js</code> sets the port to 5180, so open <code>http://localhost:5180/students</code> and sign in as an admin. Remember that this app logs you in with a phone number, not a username and not an email.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>The heading shows <code>Loading...</code> for a moment, then <code>N students</code>. The Add student button is on the right. The table has seven columns. If the row count is 0 and there is no red banner, the page is working and the database is simply empty. Click Add student, fill in a name and a date, press Save, and the row appears.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Watch the green banner after saving. Do nothing, and about four seconds later it vanishes on its own. That is the <code>setTimeout</code> inside <code>useFlash</code> in <code>frontend/src/flash.js</code>, not anything in this page.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Stop the Django terminal with Ctrl+C, then refresh <code>/students</code>. You get the red banner reading <code>Could not reach the server. Is Django running on http://127.0.0.1:8001?</code>. That message is thrown by the <code>catch</code> around <code>fetch</code> in <code>api.js</code>, travels as <code>problem.message</code>, lands in <code>error</code> state, and is drawn by the first <code>&lt;Alert&gt;</code>. Start Django again and refresh to clear it.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Sign out and sign in as a student. The rows still load, because reading is open to any signed-in account. But the Add student button is gone, and every row's Action column shows a grey dash instead of the pencil and trash. Right-click and choose Inspect: the buttons are not in the HTML at all. That is <code>mayCreate</code> and <code>mayEdit</code> from <code>canCreate(user?.role, "student")</code> and <code>canWrite(user?.role, "student")</code>.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>The heading shows <code>Loading...</code> for a moment, then <code>N students</code>. The Add student button is on the right. The table has seven columns. If the row count is 0 and there is no red banner, the page is working and the database is simply empty. Click Add student, fill in a name and a date, press Save, and the row appears.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Watch the green banner after saving. It stays where it is until you click the &times; on the right of it. That button exists because this page passed <code>Alert</code> an <code>onDismiss</code>; a banner given no way to be cleared is drawn without one.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Stop the Django terminal with Ctrl+C, then refresh <code>/students</code>. You get the red banner reading <code>Could not reach the server. Is Django running on http://127.0.0.1:8001?</code>. That message is thrown by the <code>catch</code> around <code>fetch</code> in <code>api.js</code>, travels as <code>problem.message</code>, lands in <code>error</code> state, and is drawn by the first <code>&lt;Alert&gt;</code>. Start Django again and refresh to clear it.</p></div></div><div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Sign out and sign in as a student. The rows still load, because reading is open to any signed-in account. But the Add student button is gone, and every row's Action column shows a grey dash instead of the pencil and trash. Right-click and choose Inspect: the buttons are not in the HTML at all. That is <code>mayCreate</code> and <code>mayEdit</code> from <code>canCreate(user?.role, "student")</code> and <code>canWrite(user?.role, "student")</code>.</p></div></div>
 <h3 id="the-same-page-again-with-different-nouns">The same page again, with different nouns</h3>
 <p>Now open <code>frontend/src/pages/Teachers.jsx</code> and read it top to bottom. It carries a six-step comment block of its own, the same state, the same effect, the same <code>reload()</code>, the same <code>handleSave</code>, the same two-part delete.</p>
 <p class="figref">See Figure 0.4.</p>
@@ -12352,7 +12246,7 @@ npm<span class="w"> </span>run<span class="w"> </span>dev
 <h3 id="the-six-steps-as-a-recipe">The six steps, as a recipe</h3>
 <p>Apply this to any of the other seven pages. Keep the order; it is the order the code sits in the file.</p>
 <ol>
-<li><strong>State.</strong> In this order: the rows array, <code>isLoading</code>, <code>error</code>, <code>useFlash</code> for the notice, <code>useAuth</code> plus <code>mayCreate</code> and <code>mayEdit</code>, <code>isSaving</code>, the <code>xToDelete</code> object and <code>isDeleting</code>, one piece of state per form field, <code>formIsOpen</code>, <code>editingId</code> starting at <code>0</code>, and <code>reloadCount</code> with its <code>reload()</code> function. If the rows carry foreign keys, add one state array per related list and a <code>findXName</code> helper for each.</li>
+<li><strong>State.</strong> In this order: the rows array, <code>isLoading</code>, <code>error</code>, <code>notice</code>, <code>useAuth</code> plus <code>mayCreate</code> and <code>mayEdit</code>, <code>isSaving</code>, the <code>xToDelete</code> object and <code>isDeleting</code>, one piece of state per form field, <code>formIsOpen</code>, <code>editingId</code> starting at <code>0</code>, and <code>reloadCount</code> with its <code>reload()</code> function. If the rows carry foreign keys, add one state array per related list and a <code>findXName</code> helper for each.</li>
 <li><strong>The effect.</strong> <code>useEffect(() =&gt; { async function load() {...} load(); }, [reloadCount]);</code> with <code>try</code> / <code>catch (problem)</code> / <code>finally</code>. <code>setRows</code> on success, <code>setError("")</code> on success, <code>setError(problem.message)</code> on failure, <code>setIsLoading(false)</code> in <code>finally</code>. Use <code>Promise.all</code> if there is more than one list to fetch.</li>
 <li><strong>reload().</strong> <code>setReloadCount((count) =&gt; count + 1)</code>. Nothing more.</li>
 <li><strong>The three form helpers plus handleSave.</strong> <code>openEmptyForm</code> clears every field and sets <code>editingId</code> to <code>0</code>. <code>openFormForEditing(row)</code> fills every field with <code>?? ""</code> on any nullable text field and sets <code>editingId</code> to <code>row.id</code>. <code>closeForm</code> just closes. <code>handleSave</code> starts with <code>event.preventDefault()</code> and <code>setIsSaving(true)</code>, builds one <code>values</code> object using the exact server field names, then <code>if (editingId === 0)</code> create else update, then notice, <code>setError("")</code>, <code>closeForm()</code>, <code>reload()</code>.</li>
@@ -13943,19 +13837,19 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 </div>
 
 <p>That is a real decision, not an oversight. A public sign-up page logs you in as the account it just made, because that account is yours. Here it belongs to somebody else. Swapping the admin's session for the new user's would be wrong every time.</p>
-<p>The success banner is set to stay on screen longer than elsewhere:</p>
+<p>The success banner is the one place a message really has to be read, rather than glanced at:</p>
 <div class="filebox" markdown="0">
 <div class="filetab">frontend/src/pages/Accounts.jsx</div>
 
 
-<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">,</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useFlash</span><span class="p">(</span><span class="mf">8000</span><span class="p">);</span>
+<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">,</span><span class="w"> </span><span class="nx">setNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
 </code></pre></div>
 
 
 
 </div>
 
-<p>Every other page calls <code>useFlash()</code> with no argument and gets the 4000 millisecond default. This message contains a phone number the admin has to read and pass on to a real person, so it gets eight seconds.</p>
+<p>Same two lines as every other page. This message contains a phone number the admin has to read and pass on to a real person, and it stays on screen until they close it — which is the reason this project stopped putting notices on a timer at all. An earlier version cleared them after four seconds, and this page had to ask for eight.</p>
 <p><code>clearForm()</code> then empties all seven fields, ready for the next account, and resets the role back to <code>"student"</code>.</p>
 <h4 id="the-honest-limitation">The honest limitation</h4>
 <p>This page creates accounts. It does not list them, search them, edit them, deactivate them or delete them.</p>
@@ -14017,7 +13911,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 
 
 <div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">detailsError</span><span class="p">,</span><span class="w"> </span><span class="nx">setDetailsError</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
-<span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">detailsNotice</span><span class="p">,</span><span class="w"> </span><span class="nx">setDetailsNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useFlash</span><span class="p">();</span>
+<span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">detailsNotice</span><span class="p">,</span><span class="w"> </span><span class="nx">setDetailsNotice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
 <span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">isSavingDetails</span><span class="p">,</span><span class="w"> </span><span class="nx">setIsSavingDetails</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">currentPassword</span><span class="p">,</span><span class="w"> </span><span class="nx">setCurrentPassword</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">);</span>
@@ -14309,11 +14203,6 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <span class="c1">// The old token stays technically valid until it expires, so the honest</span>
 <span class="c1">// thing is to end the session here and make them sign in with the new</span>
 <span class="c1">// password.</span>
-<span class="c1">//</span>
-<span class="c1">// The message is left where the sign-out redirect cannot lose it. Being</span>
-<span class="c1">// dumped on the login screen with no explanation reads like a failure,</span>
-<span class="c1">// when in fact the change worked.</span>
-<span class="nx">leaveNoticeForLogin</span><span class="p">(</span><span class="s2">&quot;Password changed. Please log in again.&quot;</span><span class="p">);</span>
 <span class="nx">logOut</span><span class="p">();</span>
 <span class="nx">navigate</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">replace</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">});</span>
 </code></pre></div>
@@ -14333,28 +14222,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 </code></pre></div>
 
 <p>Refresh tokens <em>are</em> stored, so they can be blacklisted. The short-lived access token in the browser cannot be. Dropping the session on the frontend is the remaining honest move: the browser throws away the token it is holding, so the account is genuinely reachable only with the new password.</p>
-<p>Which leaves a user-experience problem. Signing out redirects to <code>/login</code>, and a login page that appears with no explanation looks like something failed, when in fact the change succeeded. Router state cannot carry a message through that redirect, and the comment in <code>flash.js</code> says precisely why:</p>
-<div class="filebox" markdown="0">
-<div class="filetab">frontend/src/flash.js</div>
-
-
-<div class="codehilite"><pre><span></span><code><span class="c1">// A message that has to survive both a page change and a sign-out.</span>
-<span class="c1">//</span>
-<span class="c1">// Router state cannot carry this. Signing out re-renders whatever page you</span>
-<span class="c1">// were on inside ProtectedRoute, which fires its own redirect to /login and</span>
-<span class="c1">// replaces the history entry — throwing away any state that came with it. So</span>
-<span class="c1">// the message goes somewhere the redirect cannot touch, and the login page</span>
-<span class="c1">// takes it exactly once.</span>
-<span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">leaveNoticeForLogin</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">setItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">,</span><span class="w"> </span><span class="nx">message</span><span class="p">);</span>
-<span class="p">}</span>
-</code></pre></div>
-
-
-
-</div>
-
-<p><code>sessionStorage</code> survives navigation within the tab and is cleared when the tab closes. The Login page reads it with <code>takeNoticeLeftForLogin()</code>, which removes the key as it reads, so the message shows once and does not reappear on the next visit.</p>
+<p>Which leaves a user-experience problem, and this app does not solve it: the login page appears with no explanation, which looks like something failed when in fact the change succeeded. Carrying a message across that sign-out is harder than it looks. Router state cannot do it — <code>logOut()</code> re-renders this page inside <code>ProtectedRoute</code>, which fires its own redirect to <code>/login</code> and replaces the history entry, throwing away anything travelling with the <code>navigate()</code> call below it. The message has to be parked somewhere no redirect can reach, <code>sessionStorage</code> being the usual shelf, and taken exactly once so it does not reappear on the next visit. An earlier version of this project did that, in a small <code>flash.js</code>; it was removed with the rest of that file. Putting it back is a contained exercise if you want one.</p>
 <p>One last detail in the handler. Look at where <code>setIsSavingPassword(false)</code> is:</p>
 <div class="filebox" markdown="0">
 <div class="filetab">frontend/src/pages/Profile.jsx</div>
@@ -14372,7 +14240,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 
 <p>In the <code>catch</code>, not in a <code>finally</code>. Every other save in this book uses <code>finally</code>. Here, the success path navigates away and unmounts the component, so setting state afterwards would be pointless at best. Only the failure path still has a form on screen with a button that needs to come back to life.</p>
 <p class="figref">See Figure 0.6.</p>
-<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Change your first name and save. The green "Your details have been saved." appears and fades after four seconds. Now change your password. You land on the login page with "Password changed. Please log in again." in a banner. Sign in with the new password. Refresh the login page before signing in and the banner is gone, because <code>takeNoticeLeftForLogin</code> removed it the first time it was read.</p></div></div>
+<div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Change your first name and save. The green "Your details have been saved." appears and stays until you close it with the &times;. Now change your password: you land on the login page, with no banner and no explanation. Sign in with the new password to prove the change worked. That silence is the gap described above, not a bug you have introduced.</p></div></div>
 <hr>
 <h3 id="1210-notfound-the-route-that-catches-everything-else">12.10 NotFound: the route that catches everything else</h3>
 <p>The smallest file in the project:</p>
@@ -14572,8 +14440,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
         ├── auth.js                           # the auth context object and the useAuth() hook
         ├── AuthContext.jsx                   # AuthProvider: who is logged in
         ├── permissions.js                    # decides which buttons to show for a role
-        ├── flash.js                          # the green message that clears itself
-        ├── components/                       # small pieces reused on many pages
+        ├──         ├── components/                       # small pieces reused on many pages
         │   ├── index.js                      # one import line for all of the below
         │   ├── styles.js                     # two shared Tailwind class strings
         │   ├── Alert.jsx                     # the red and green banners
@@ -14989,11 +14856,6 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <td><code>permissions.js</code></td>
 <td>A copy of the backend's role table used only to decide which buttons to draw. Exports <code>ADMIN</code>, <code>TEACHER</code>, <code>STUDENT</code>, <code>canWrite()</code>, <code>canCreate()</code> and <code>roleLabel()</code>.</td>
 <td>12</td>
-</tr>
-<tr>
-<td><code>flash.js</code></td>
-<td><code>useFlash()</code>, the green message that clears itself after four seconds, plus <code>leaveNoticeForLogin()</code> and <code>takeNoticeLeftForLogin()</code>, which carry one message across a sign-out.</td>
-<td>11</td>
 </tr>
 </tbody>
 </table>
@@ -15529,7 +15391,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 
 </div>
 
-<p><code>setNotice</code> comes from <code>useFlash()</code> in <code>flash.js</code>, so the green banner will take itself down after four seconds. <code>closeForm()</code> sets <code>formIsOpen</code> to <code>false</code>, which removes the form from the screen.</p>
+<p><code>setNotice</code> is ordinary state, so the green banner stays until the user closes it. <code>closeForm()</code> sets <code>formIsOpen</code> to <code>false</code>, which removes the form from the screen.</p>
 <h4 id="18-reload-re-runs-the-effect">18. <code>reload()</code> re-runs the effect</h4>
 <div class="filebox" markdown="0">
 <div class="filetab">frontend/src/pages/Teachers.jsx</div>
@@ -15588,7 +15450,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 
 </div>
 
-<p><code>finally</code> runs whether the save worked or threw, so the button is re-enabled either way. Four seconds later the <code>useFlash</code> timer clears <code>notice</code>, <code>&lt;Alert&gt;</code> sees empty children and returns <code>null</code>, and the green banner disappears on its own.</p>
+<p><code>finally</code> runs whether the save worked or threw, so the button is re-enabled either way. The green banner stays up until somebody clicks its &times;, which sets <code>notice</code> back to an empty string; <code>&lt;Alert&gt;</code> then sees empty children and returns <code>null</code>.</p>
 <p>That is twenty steps across nine files, for one click. Every other create, update and delete in the app follows the same path with different names.</p>
 <div class="callout checkpoint"><div class="callout-label">Checkpoint</div><div class="callout-body"><p>Open your browser's developer tools, go to the Network tab, and add a teacher. You should see three entries in a row: an <code>OPTIONS</code> to <code>teacher/</code> (the CORS preflight), a <code>POST</code> to <code>teacher/</code> returning <code>201</code>, and a <code>GET</code> to <code>teacher/</code> returning <code>200</code>. Click the <code>POST</code> and look at the Headers tab to see <code>Authorization: Bearer ...</code> going out, and the Response tab to see the new <code>id</code> coming back.</p></div></div>
 <h3 id="a-shorter-trace-logging-in">A shorter trace: logging in</h3>
@@ -15762,7 +15624,7 @@ touch<span class="w"> </span>Accounts.jsx<span class="w"> </span>Profile.jsx<spa
 <p><strong>component</strong> - a JavaScript function that returns some screen, which you then use like an HTML tag; <code>Button</code> in <code>components/Button.jsx</code> is used as <code>&lt;Button&gt;</code>.</p>
 <p><strong>prop</strong> - a value passed into a component from outside, written like an HTML attribute; in <code>&lt;Alert variant="success"&gt;</code> the prop <code>variant</code> is <code>"success"</code>.</p>
 <p><strong>state</strong> - a value a component remembers between renders and can change, created with <code>useState</code>; <code>const [name, setName] = useState("")</code> in <code>Teachers.jsx</code> is state.</p>
-<p><strong>hook</strong> - a function whose name starts with <code>use</code> that lets a component tap into React's features; this project uses <code>useState</code>, <code>useEffect</code>, <code>useContext</code>, and its own <code>useAuth</code> and <code>useFlash</code>.</p>
+<p><strong>hook</strong> - a function whose name starts with <code>use</code> that lets a component tap into React's features; this project uses <code>useState</code>, <code>useEffect</code>, <code>useContext</code>, <code>useId</code>, and its own <code>useAuth</code>.</p>
 <p><strong>JSX</strong> - the HTML-looking syntax written inside JavaScript files, which Vite compiles into real function calls; it is why <code>.jsx</code> files can contain <code>&lt;div&gt;</code> in the middle of code.</p>
 <p><strong>context</strong> - React's way of handing a value to every component below it without passing it down through every layer; <code>AuthContext</code> carries the signed-in user to every page inside <code>AuthProvider</code>.</p>
 <p><strong>route</strong> - a rule pairing one address with one component, declared as <code>&lt;Route path="/teachers" element={&lt;Teachers /&gt;} /&gt;</code> in <code>App.jsx</code>.</p>
@@ -16406,7 +16268,7 @@ Superuser created successfully.
 </ul>
 </section>
 
-<section class="chapter" id="figures"><header class="chapter-head"><div class="chapter-kicker">Appendix</div><h1>List of Figures</h1></header><table class="figtable"><thead><tr><th>Figure</th><th>What it shows</th></tr></thead><tbody><tr><td>Figure 0.1</td><td><a href="#fig-ss-login">The login screen. Phone number and password only. No sign-up link, because accounts are handed out by an admin.</a></td></tr><tr><td>Figure 0.2</td><td><a href="#fig-ss-login-error">The same screen after a failed attempt. One red banner, one message, and no clue about which half was wrong.</a></td></tr><tr><td>Figure 0.3</td><td><a href="#fig-ss-dashboard">The dashboard as an admin. Eight tiles, one per record type, each showing a live count. Clicking a tile opens that page.</a></td></tr><tr><td>Figure 0.4</td><td><a href="#fig-ss-teachers-list">The Teachers page. Title, subtitle, a count in the card header, the Add teacher button, and one row per teacher with pencil and trash buttons.</a></td></tr><tr><td>Figure 0.5</td><td><a href="#fig-ss-accounts">The Accounts page. One form, a Role dropdown, and a green banner after a successful save telling the admin which phone number the new person logs in with.</a></td></tr><tr><td>Figure 0.6</td><td><a href="#fig-ss-profile">The profile page. Your details on the left, change password on the right, and a line saying your username and role are set by an admin.</a></td></tr><tr><td>Figure 0.7</td><td><a href="#fig-ss-notfound">The 404 page. A bordered card, nothing else.</a></td></tr><tr><td>Figure 2.1</td><td><a href="#fig-ss-drf-browsable">The DRF browsable API page at /api/teacher/, refusing an anonymous visitor with a 401</a></td></tr><tr><td>Figure 3.1</td><td><a href="#fig-ss-django-admin">The Django admin home page. Every model registered in admin.py appears under the BACKEND heading, alongside Django&#x27;s own Groups and Users.</a></td></tr><tr><td>Figure 3.2</td><td><a href="#fig-ss-django-profile-add">The Django admin &quot;Add profile&quot; form. Three fields: the User dropdown, the phone number you will log in with, and the Role dropdown showing Admin, Teacher and Student.</a></td></tr><tr><td>Figure 4.1</td><td><a href="#fig-ss-api-json">What /api/teacher/ shows in a plain browser tab. A browser cannot attach the Authorization header, so the API answers 401 instead of the list above.</a></td></tr><tr><td>Figure 5.1</td><td><a href="#fig-ss-forbidden">A student who forces a write through anyway gets the permission class&#x27;s own message back from the API, shown here in the red banner.</a></td></tr><tr><td>Figure 6.1</td><td><a href="#fig-ss-teachers-student">The Teachers page as a student sees it. The list is there, because reading is open to any signed-in account. There is no Add button and the Action column is dashes.</a></td></tr><tr><td>Figure 6.2</td><td><a href="#fig-ss-sidebar-student">The sidebar for a signed-in student. Every resource page is listed, because reading is open, but the Accounts link is gone.</a></td></tr><tr><td>Figure 8.1</td><td><a href="#fig-ss-teachers-success">The green &quot;Teacher added.&quot; banner that useFlash clears on its own after four seconds.</a></td></tr><tr><td>Figure 10.1</td><td><a href="#fig-ss-teachers-form">The Teachers form: Input, Checkbox and two Buttons, all from the shared folder.</a></td></tr><tr><td>Figure 10.2</td><td><a href="#fig-ss-teachers-confirm">ConfirmDialog naming the exact teacher, with Cancel and Delete built from Button.</a></td></tr><tr><td>Figure 11.1</td><td><a href="#fig-ss-students">The Students page: a red or green banner slot at the top, an Add button, and one row per student.</a></td></tr><tr><td>Figure 11.2</td><td><a href="#fig-ss-enrollments">Enrollments. The Student and Course columns are ids from the API, turned into names in the browser.</a></td></tr><tr><td>Figure 12.1</td><td><a href="#fig-ss-courses">The Courses page. The Teacher column shows names, joined in the browser from the separate teacher list.</a></td></tr><tr><td>Figure 12.2</td><td><a href="#fig-ss-lessons">The Lessons page. Same table, same form, same buttons. Only the nouns changed.</a></td></tr><tr><td>Figure 12.3</td><td><a href="#fig-ss-assignments">The Assignments page. The Lesson dropdown only lists lessons from the chosen course, and Due shows local time.</a></td></tr><tr><td>Figure 12.4</td><td><a href="#fig-ss-submissions">The Submissions page. Content is cut at 60 characters and Submitted is a server-set timestamp.</a></td></tr><tr><td>Figure 12.5</td><td><a href="#fig-ss-results">The Results page. Each row names the student and the assignment behind the submission id.</a></td></tr></tbody></table></section>
+<section class="chapter" id="figures"><header class="chapter-head"><div class="chapter-kicker">Appendix</div><h1>List of Figures</h1></header><table class="figtable"><thead><tr><th>Figure</th><th>What it shows</th></tr></thead><tbody><tr><td>Figure 0.1</td><td><a href="#fig-ss-login">The login screen. Phone number and password only. No sign-up link, because accounts are handed out by an admin.</a></td></tr><tr><td>Figure 0.2</td><td><a href="#fig-ss-login-error">The same screen after a failed attempt. One red banner, one message, and no clue about which half was wrong.</a></td></tr><tr><td>Figure 0.3</td><td><a href="#fig-ss-dashboard">The dashboard as an admin. Eight tiles, one per record type, each showing a live count. Clicking a tile opens that page.</a></td></tr><tr><td>Figure 0.4</td><td><a href="#fig-ss-teachers-list">The Teachers page. Title, subtitle, a count in the card header, the Add teacher button, and one row per teacher with pencil and trash buttons.</a></td></tr><tr><td>Figure 0.5</td><td><a href="#fig-ss-accounts">The Accounts page. One form, a Role dropdown, and a green banner after a successful save telling the admin which phone number the new person logs in with.</a></td></tr><tr><td>Figure 0.6</td><td><a href="#fig-ss-profile">The profile page. Your details on the left, change password on the right, and a line saying your username and role are set by an admin.</a></td></tr><tr><td>Figure 0.7</td><td><a href="#fig-ss-notfound">The 404 page. A bordered card, nothing else.</a></td></tr><tr><td>Figure 2.1</td><td><a href="#fig-ss-drf-browsable">The DRF browsable API page at /api/teacher/, refusing an anonymous visitor with a 401</a></td></tr><tr><td>Figure 3.1</td><td><a href="#fig-ss-django-admin">The Django admin home page. Every model registered in admin.py appears under the BACKEND heading, alongside Django&#x27;s own Groups and Users.</a></td></tr><tr><td>Figure 3.2</td><td><a href="#fig-ss-django-profile-add">The Django admin &quot;Add profile&quot; form. Three fields: the User dropdown, the phone number you will log in with, and the Role dropdown showing Admin, Teacher and Student.</a></td></tr><tr><td>Figure 4.1</td><td><a href="#fig-ss-api-json">What /api/teacher/ shows in a plain browser tab. A browser cannot attach the Authorization header, so the API answers 401 instead of the list above.</a></td></tr><tr><td>Figure 5.1</td><td><a href="#fig-ss-forbidden">A student who forces a write through anyway gets the permission class&#x27;s own message back from the API, shown here in the red banner.</a></td></tr><tr><td>Figure 6.1</td><td><a href="#fig-ss-teachers-student">The Teachers page as a student sees it. The list is there, because reading is open to any signed-in account. There is no Add button and the Action column is dashes.</a></td></tr><tr><td>Figure 6.2</td><td><a href="#fig-ss-sidebar-student">The sidebar for a signed-in student. Every resource page is listed, because reading is open, but the Accounts link is gone.</a></td></tr><tr><td>Figure 8.1</td><td><a href="#fig-ss-teachers-success">The green &quot;Teacher added.&quot; banner after a save.</a></td></tr><tr><td>Figure 10.1</td><td><a href="#fig-ss-teachers-form">The Teachers form: Input, Checkbox and two Buttons, all from the shared folder.</a></td></tr><tr><td>Figure 10.2</td><td><a href="#fig-ss-teachers-confirm">ConfirmDialog naming the exact teacher, with Cancel and Delete built from Button.</a></td></tr><tr><td>Figure 11.1</td><td><a href="#fig-ss-students">The Students page: a red or green banner slot at the top, an Add button, and one row per student.</a></td></tr><tr><td>Figure 11.2</td><td><a href="#fig-ss-enrollments">Enrollments. The Student and Course columns are ids from the API, turned into names in the browser.</a></td></tr><tr><td>Figure 12.1</td><td><a href="#fig-ss-courses">The Courses page. The Teacher column shows names, joined in the browser from the separate teacher list.</a></td></tr><tr><td>Figure 12.2</td><td><a href="#fig-ss-lessons">The Lessons page. Same table, same form, same buttons. Only the nouns changed.</a></td></tr><tr><td>Figure 12.3</td><td><a href="#fig-ss-assignments">The Assignments page. The Lesson dropdown only lists lessons from the chosen course, and Due shows local time.</a></td></tr><tr><td>Figure 12.4</td><td><a href="#fig-ss-submissions">The Submissions page. Content is cut at 60 characters and Submitted is a server-set timestamp.</a></td></tr><tr><td>Figure 12.5</td><td><a href="#fig-ss-results">The Results page. Each row names the student and the assignment behind the submission id.</a></td></tr></tbody></table></section>
 
 </div>
 </body>

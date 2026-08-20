@@ -102,7 +102,7 @@ Three things are deliberately not on that page:
 
 Your **phone number is your login**, so changing it changes what you type next time; the page says so under the field. Phone and email both have to stay unique — email because password reset looks accounts up by it.
 
-Changing your password signs you out. Refresh tokens are blacklisted server-side, but an access token already issued cannot be revoked (a JWT is not looked up on each request), so the frontend ends the session itself and the login page explains why.
+Changing your password signs you out. Refresh tokens are blacklisted server-side, but an access token already issued cannot be revoked (a JWT is not looked up on each request), so the frontend ends the session itself. The login page you land on says nothing about why — carrying a message across that sign-out needs somewhere the router's own redirect cannot reach, and this app no longer does it.
 
 ### What roles cannot do here
 
@@ -125,7 +125,6 @@ frontend/src/
   auth.js             the auth context and the useAuth() hook
   AuthContext.jsx     AuthProvider: who is logged in
   permissions.js      which buttons a role is worth showing
-  flash.js            useFlash(): a "Saved" line that clears itself
   App.jsx             the list of URLs
   Sidebar.jsx         sidebar + content frame
   components/
@@ -154,8 +153,8 @@ frontend/src/
 
 Two banners sit above the form on every page:
 
-- `<Alert>` in red for anything that went wrong. The message is whatever the backend said, flattened by `readError()` in `api.js`, so a rejected field reads `email: Enter a valid email address.` rather than `[object Object]`.
-- `<Alert variant="success">` in green for `Teacher added.`, `Teacher updated.`, `Teacher deleted.` The text comes from `useFlash()` in `flash.js`, which clears it after four seconds so it does not pile up.
+- `<Alert>` in red for anything that went wrong, dismissable the same way. The message is whatever the backend said, flattened by `readError()` in `api.js`, so a rejected field reads `email: Enter a valid email address.` rather than `[object Object]`.
+- `<Alert variant="success">` in green for `Teacher added.`, `Teacher updated.`, `Teacher deleted.` Each page keeps that text in its own `useState("")` and passes `onDismiss` to `<Alert>`, which is what draws the small × that clears it. Nothing is on a timer: a banner stays until it is closed or replaced.
 
 Deleting goes through `components/ConfirmDialog.jsx`, not `window.confirm()`. The trash button only records which row was clicked; the dialog names that row and spells out what else the delete takes with it ("Their courses go too"), and closes on Cancel, on Escape, or on a click outside the card. The confirm button reads "Deleting…" and is disabled while the request is in flight.
 

@@ -26,7 +26,8 @@ export default function Students() {
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  // A short "Saved" line that clears itself after a few seconds.
+  // A short "Saved" line. It stays until the reader closes it — see the
+  // onDismiss passed to <Alert> in step 6.
   const [notice, setNotice] = useState("");
 
   // The server enforces this too. Hiding the buttons just keeps the page

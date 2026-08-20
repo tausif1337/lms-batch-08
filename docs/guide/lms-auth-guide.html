@@ -3202,52 +3202,29 @@ thing available: it throws the session away itself.</p>
 <div class="codehilite"><pre><span></span><code><span class="w">      </span><span class="c1">// The old token stays technically valid until it expires, so the honest</span>
 <span class="w">      </span><span class="c1">// thing is to end the session here and make them sign in with the new</span>
 <span class="w">      </span><span class="c1">// password.</span>
-<span class="w">      </span><span class="c1">//</span>
-<span class="w">      </span><span class="c1">// The message is left where the sign-out redirect cannot lose it. Being</span>
-<span class="w">      </span><span class="c1">// dumped on the login screen with no explanation reads like a failure,</span>
-<span class="w">      </span><span class="c1">// when in fact the change worked.</span>
-<span class="w">      </span><span class="nx">leaveNoticeForLogin</span><span class="p">(</span><span class="s2">&quot;Password changed. Please log in again.&quot;</span><span class="p">);</span>
 <span class="w">      </span><span class="nx">logOut</span><span class="p">();</span>
 <span class="w">      </span><span class="nx">navigate</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">replace</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">});</span>
 </code></pre></div>
 </div>
 
-<p>The message hand-off is a nice piece of practical React. You cannot pass this message through
-the router, because signing out re-renders the current page inside <code>ProtectedRoute</code>,
-which fires its own redirect and throws away any state travelling with the navigation. So the
-message is parked somewhere the redirect cannot reach:</p>
+<p>Which leaves one rough edge, and this app has it: you land on the login screen with no
+explanation, and a login page that appears out of nowhere reads like something failed, when in
+fact the change worked.</p>
 
-<div class="filebox"><span class="filetab">frontend/src/flash.js</span>
-<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">HANDOFF_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lms_handoff_notice&quot;</span><span class="p">;</span>
+<p>Carrying a message across that sign-out is harder than it looks, and the reason is worth
+knowing. <code>logOut()</code> flips <code>isLoggedIn</code> to false, which re-renders the
+Profile page inside <code>ProtectedRoute</code>, which fires <em>its own</em> redirect to
+<code>/login</code> and replaces the history entry. That redirect happens first and carries only
+the <code>from</code> path. Any state attached to the <code>navigate()</code> call on the line
+below never arrives.</p>
 
-<span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">leaveNoticeForLogin</span><span class="p">(</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">setItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">,</span><span class="w"> </span><span class="nx">message</span><span class="p">);</span>
-<span class="p">}</span>
-
-<span class="k">export</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">takeNoticeLeftForLogin</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">getItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">);</span>
-<span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">message</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">sessionStorage</span><span class="p">.</span><span class="nx">removeItem</span><span class="p">(</span><span class="nx">HANDOFF_KEY</span><span class="p">);</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">message</span><span class="w"> </span><span class="o">??</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div>
-</div>
-
-<p><b>sessionStorage</b> is localStorage's short-lived cousin: same interface, but cleared when
-the tab closes. Right for a message that is only meaningful for the next few seconds. And
-<code>take</code> removes it as it reads it, so the notice appears exactly once and does not
-reappear on the next reload.</p>
-
-<p>The login page picks it up on its first render:</p>
-
-<div class="filebox"><span class="filetab">frontend/src/pages/Login.jsx</span>
-<div class="codehilite"><pre><span></span><code><span class="w">  </span><span class="c1">// Left by the profile page after a password change, so the sign-out that</span>
-<span class="w">  </span><span class="c1">// follows does not look like something went wrong. Read once, on the first</span>
-<span class="w">  </span><span class="c1">// render, and cleared as it is read.</span>
-<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">notice</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">useState</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">takeNoticeLeftForLogin</span><span class="p">());</span>
-</code></pre></div>
-</div>
+<p>So the message has to be parked somewhere no redirect can reach. <code>sessionStorage</code>
+is the usual shelf — localStorage's short-lived cousin, same interface, cleared when the tab
+closes — with the login page reading it on its first render and deleting it as it reads, so
+the notice appears exactly once and does not come back on the next visit. An earlier version of
+this project did precisely that, in a small <code>src/flash.js</code>; it was removed along with
+the rest of that file when the app moved to banners the reader closes by hand. Putting it back is
+a contained exercise, and now you know which three pieces it needs.</p>
 
 <h2 id="resetting-it-when-you-have-forgotten-it">Resetting it when you have forgotten it</h2>
 
@@ -3475,8 +3452,8 @@ build the token has changed. That is the single-use property, demonstrated in tw
 
 <h2 id="what-you-have-now">What you have now</h2>
 
-<p>You know why changing a password asks for the old one, why the app signs you out afterwards
-and how the explanation survives the redirect. You know what the blacklist can and cannot retire
+<p>You know why changing a password asks for the old one, why the app signs you out afterwards,
+and why the login page you land on has nothing to say about it. You know what the blacklist can and cannot retire
 and why. You can explain both halves of the reset flow, what <code>uid</code> and
 <code>token</code> each contribute, why the token is single-use without anything being stored,
 and why the endpoint refuses to tell you whether the address was real.</p>
@@ -4246,7 +4223,7 @@ feature, and now you know exactly which problem each one exists to solve.</p>
 <tr><td><b>SECRET_KEY</b></td><td>The string every signature depends on. Leaking it means anyone can forge any token.</td><td>6, 12</td></tr>
 <tr><td><b>Serializer</b></td><td>The translator between database rows and JSON, and where incoming validation lives.</td><td>3</td></tr>
 <tr><td><b>Session</b></td><td>The other way to be remembered: a row on the server plus a cookie holding its id. Django's <code>/admin/</code> uses it.</td><td>1</td></tr>
-<tr><td><b>sessionStorage</b></td><td>Like localStorage, but cleared when the tab closes. Carries the "password changed" notice.</td><td>9</td></tr>
+<tr><td><b>sessionStorage</b></td><td>Like localStorage, but cleared when the tab closes. The usual place to park a message that has to survive a redirect.</td><td>9</td></tr>
 <tr><td><b>Signature</b></td><td>The third part of a JWT. Guarantees the contents were not altered; guarantees nothing about secrecy.</td><td>6</td></tr>
 <tr><td><b>Stateless</b></td><td>Keeping no memory between requests. Why proof must be carried on every one.</td><td>1</td></tr>
 <tr><td><b>Throttling</b></td><td>Limiting how often one caller may hit an endpoint. Absent here.</td><td>12</td></tr>
