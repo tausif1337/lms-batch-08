@@ -1,43 +1,51 @@
-import { Link } from "react-router-dom";
-import { GraduationCap, LogOut, UserPlus } from "lucide-react";
-import { useAuth } from "../auth.js";
-import Button from "../components/Button.jsx";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { clearLogin, getUser } from "../auth.js";
 
-// The place a successful login lands. Deliberately thin — the real pages
-// arrive later; this exists so the login has somewhere to go.
+// Where you land after logging in. Deliberately thin: it exists so the login
+// has somewhere to go.
 export default function Home() {
-  const { user, logOut } = useAuth();
+  const navigate = useNavigate();
+  const user = getUser();
+
+  // Not logged in, so there is nothing to show. Back to the login page.
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  function handleLogout() {
+    clearLogin();
+    navigate("/login");
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto w-full max-w-lg rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-1 flex items-center gap-2">
-          <GraduationCap size={22} className="shrink-0 text-indigo-600" />
-          <h1 className="text-xl font-semibold text-slate-900">
-            Hello, {user?.username ?? "there"}
-          </h1>
-        </div>
-
-        <p className="mb-6 text-sm text-slate-500">
-          You are signed in as {user?.role ?? "..."}.
+        <h1 className="text-xl font-semibold text-slate-900">
+          Hello, {user.username}
+        </h1>
+        <p className="mt-1 mb-6 text-sm text-slate-500">
+          You are signed in as {user.role}.
         </p>
 
-        <div className="flex flex-wrap gap-2">
-          {/* Shown to admins only, to match the guard on the route. Hiding it
-              is a courtesy; ProtectedRoute and IsAdmin are what enforce it. */}
-          {user?.role === "admin" && (
-            <Link to="/register">
-              <Button>
-                <UserPlus size={16} />
-                Create an account
-              </Button>
+        <div className="flex gap-2">
+          {/* Only an admin can make accounts, so only an admin sees the
+              button. Hiding it is a courtesy: Django refuses the request
+              either way, and that is what actually keeps it safe. */}
+          {user.role === "admin" && (
+            <Link
+              to="/register"
+              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Create an account
             </Link>
           )}
 
-          <Button variant="secondary" onClick={logOut}>
-            <LogOut size={16} />
+          <button
+            onClick={handleLogout}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
             Log out
-          </Button>
+          </button>
         </div>
       </div>
     </div>

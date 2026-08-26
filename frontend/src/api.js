@@ -1,153 +1,101 @@
-// Every call to the Django backend goes through this one file.
+// Every call to the Django backend happens in this file.
 //
-// Three things about the backend shape the code here:
-//   - you log in with a phone number, not an email
-//   - the tokens come back nested, so it is data.tokens.access, not data.access
-//   - every path ends in a slash. /api/login (no slash) redirects and the
-//     POST body is thrown away on the way.
+// Two things about this backend are easy to trip over:
+//   - you log in with a phone number, not an email or a username
+//   - every address ends with a slash. "/login" without it does not work.
 
-import axios from "axios";
+import { getToken } from "./auth.js";
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8001/api";
+const BASE_URL = "http://127.0.0.1:8001/api";
 
-const TOKEN_KEY = "lms_access_token";
-const USER_KEY = "lms_user";
-
-// --- where the session lives --------------------------------------------
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function saveSession(token, user) {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
-}
-
-export function getSavedUser() {
-  const raw = localStorage.getItem(USER_KEY);
-  if (!raw) {
-    return null;
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-export function clearSession() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
-}
-
-// --- turning Django's errors into one sentence --------------------------
-
-// Django REST Framework reports errors in a few different shapes:
-//   {"detail": "..."}                     a permission or 404 error
-//   {"error": "..."}                      the hand-written login view
-//   {"phone": ["This field is required"]} a serializer rejecting a field
-// This turns all of them into one readable line.
-function readError(data, status) {
-  if (!data || typeof data !== "object") {
-    return `Request failed (${status})`;
-  }
-
-  if (typeof data.detail === "string") {
+// Django does not report errors in one single shape. These are the three we
+// actually get back, and this turns any of them into one sentence we can put
+// on the screen.
+function readError(data) {
+  // {"detail": "Only an admin can create accounts."}
+  if (data.detail) {
     return data.detail;
   }
 
-  if (typeof data.error === "string") {
+  // {"error": "Invalid phone or password"} - written by hand in the login view
+  if (data.error) {
     return data.error;
   }
 
-  const parts = [];
-  for (const [field, value] of Object.entries(data)) {
-    const text = Array.isArray(value) ? value.join(" ") : String(value);
-    parts.push(field === "non_field_errors" ? text : `${field}: ${text}`);
+  // {"phone": ["This phone number is already registered."]}
+  // One line for each field Django complained about.
+  const lines = [];
+
+  for (const field in data) {
+    const value = data[field];
+
+    // The value is usually a list of messages, so join them into one string.
+    if (Array.isArray(value)) {
+      lines.push(field + ": " + value.join(" "));
+    } else {
+      lines.push(field + ": " + value);
+    }
   }
 
-  if (parts.length === 0) {
-    return `Request failed (${status})`;
+  if (lines.length > 0) {
+    return lines.join("\n");
   }
 
-  return parts.join("\n");
+  return "Something went wrong.";
 }
 
-// There is no refresh endpoint on this backend. When the access token is
-// rejected the only thing left to do is drop the session. api.js is a plain
-// module with no way to reach React, so it shouts through a browser event
-// and AuthContext listens for it.
-function handleExpiredToken() {
-  clearSession();
-  window.dispatchEvent(new Event("lms:unauthorised"));
-}
-
-// --- the client ---------------------------------------------------------
-
-const api = axios.create({
-  baseURL: BASE_URL,
-  headers: { "Content-Type": "application/json" },
-});
-
-// Runs before every request. This is the whole reason for having one client:
-// the token gets attached in a single place instead of at 30 call sites.
+// One function that does the talking, so login and register below stay short.
 //
-// `skipAuth` is our own flag, not an axios one. Do not call it `auth` --
-// axios already uses that name for HTTP Basic credentials.
-api.interceptors.request.use((config) => {
+//   method  "GET" or "POST"
+//   path    the bit after /api, for example "/login/"
+//   body    the object to send, or nothing at all for a GET
+async function request(method, path, body) {
+  // What we send along with the request. Content-Type tells Django that the
+  // body is JSON and not, say, a filled-in HTML form.
+  const headers = { "Content-Type": "application/json" };
+
+  // If we are logged in, send the token too. This is what makes Django treat
+  // the request as coming from us instead of from a stranger.
   const token = getToken();
-  if (token && config.skipAuth !== true) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    headers.Authorization = "Bearer " + token;
   }
-  return config;
-});
 
-// Runs after every response. Two jobs:
-//   1. unwrap .data once, so callers get the JSON and not the axios envelope
-//   2. turn every failure into a plain Error carrying a readable message
-api.interceptors.response.use(
-  (response) => response.data,
-  (error) => {
-    // No response at all means the request never landed: Django is down,
-    // or the port is wrong.
-    if (!error.response) {
-      return Promise.reject(
-        new Error(
-          "Could not reach the server. Is Django running on http://127.0.0.1:8001?",
-        ),
-      );
-    }
+  let response;
 
-    const { status, data } = error.response;
+  try {
+    response = await fetch(BASE_URL + path, {
+      method: method,
+      headers: headers,
+      // JSON.stringify turns our object into the text that gets sent.
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // fetch only fails like this when the request never arrived at all.
+    throw new Error(
+      "Could not reach the server. Is Django running on " + BASE_URL + "?",
+    );
+  }
 
-    if (status === 401 && error.config?.skipAuth !== true) {
-      handleExpiredToken();
-      return Promise.reject(
-        new Error("Your session has expired. Please log in again."),
-      );
-    }
+  // The reply arrives as text. This turns it back into a JavaScript object.
+  const data = await response.json();
 
-    return Promise.reject(new Error(readError(data, status)));
-  },
-);
+  // response.ok is true for a status in the 200s. Anything else - 400, 401,
+  // 403 - means Django refused, and the reason is inside data.
+  if (!response.ok) {
+    throw new Error(readError(data));
+  }
 
-// --- auth ---------------------------------------------------------------
+  return data;
+}
 
-// You log in with a phone number. There is no username or email login.
+// Log in with a phone number and a password.
 export function login(phone, password) {
-  return api.post("/login/", { phone, password }, { skipAuth: true });
+  return request("POST", "/login/", { phone: phone, password: password });
 }
 
-// Creating an account is an admin job, so this call carries the admin's own
-// token. There is no public sign-up on this backend: RegisterView is guarded
-// by IsAdmin, and an anonymous POST here comes back 403.
-export function register(details) {
-  return api.post("/register/", details);
+// Create an account. Only an admin is allowed to do this, and the token added
+// by request() above is how Django knows the caller is one.
+export function register(newAccount) {
+  return request("POST", "/register/", newAccount);
 }
-
-export function fetchProfile() {
-  return api.get("/profile/");
-}
-
-export default api;

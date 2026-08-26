@@ -1,39 +1,21 @@
-import { Route, Routes } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Home from "./pages/Home.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
+// Which page shows for which address.
+//
+// Each page checks for itself whether the visitor is allowed to see it, so
+// there is nothing clever going on here - it is a plain list.
 export default function App() {
   return (
     <Routes>
-      {/* The one public page. Everything else needs a token. */}
+      <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Home />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Nested guards: the outer one wants a token, the inner one wants the
-          admin role. Matches /api/register/, which is behind IsAdmin. A
-          teacher or student typing this URL is sent back to /. */}
-      <Route
-        path="/register"
-        element={
-          <ProtectedRoute>
-            <ProtectedRoute role="admin">
-              <Register />
-            </ProtectedRoute>
-          </ProtectedRoute>
-        }
-      />
-
+      {/* "*" means anything that did not match a line above. */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
