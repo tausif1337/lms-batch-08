@@ -37,7 +37,19 @@ async function request(method, path, body, useToken = true) {
 
   // If Django says something went wrong
   if (!response.ok) {
-    throw new Error(data.detail || data.error || "Something went wrong");
+
+    // Django REST Framework reports form problems per field, like
+    // { "password": ["This password is too common."] }. Those never
+    // land in `detail` or `error`, so pull out the first field message
+    // instead of falling back to a vague "Something went wrong".
+    let message = data.detail || data.error;
+
+    if (!message && data && typeof data === "object") {
+      const firstField = Object.values(data)[0];
+      message = Array.isArray(firstField) ? firstField[0] : firstField;
+    }
+
+    throw new Error(message || "Something went wrong");
   }
 
 
