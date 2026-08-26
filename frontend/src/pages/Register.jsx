@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+
 import { register } from "../api.js";
 import { getUser } from "../auth.js";
 
-// Making an account is an admin job on this backend, so this page is not for
-// everybody. There is no public sign-up.
+
+// Every input on this page looks the same,
+// so the classes live here instead of being repeated
+const inputClass =
+  "w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200";
+
+
 export default function Register() {
-  // One piece of state per box. It is more lines than clever tricks would be,
-  // but you can see exactly where every value lives.
+
+  // Form values
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
@@ -16,38 +22,43 @@ export default function Register() {
   const [role, setRole] = useState("student");
   const [password, setPassword] = useState("");
 
+  // Messages
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [isSending, setIsSending] = useState(false);
 
-  // Who is looking at this page.
+  // Loading
+  const [loading, setLoading] = useState(false);
+
+  // Get logged in user
   const user = getUser();
 
-  // These two checks come AFTER the useState lines on purpose. React needs
-  // every useState in a component to run on every draw, so never put one
-  // behind an if or after a return.
+
+  // Not logged in
   if (!user) {
-    // Nobody is logged in. <Navigate> sends the browser somewhere else.
     return <Navigate to="/login" replace />;
   }
 
+
+  // Not an admin
   if (user.role !== "admin") {
-    // Logged in, but a teacher or a student. Django would refuse this anyway;
-    // sending them away just saves a pointless trip to the server.
     return <Navigate to="/" replace />;
   }
 
+
   async function handleSubmit(event) {
+
     event.preventDefault();
 
     setError("");
     setSuccess("");
-    setIsSending(true);
+    setLoading(true);
+
 
     try {
-      // The names on the left are what Django expects. Note first_name and
-      // last_name: Python uses underscores where JavaScript uses capitals.
-      const created = await register({
+
+      // Send form data to Django
+      const data = await register({
+
         first_name: firstName,
         last_name: lastName,
         username: username,
@@ -55,18 +66,17 @@ export default function Register() {
         phone: phone,
         role: role,
         password: password,
+
       });
 
+
+      // Show success message
       setSuccess(
-        "Account created for " +
-          created.username +
-          " as " +
-          created.role +
-          ". They log in with the phone number, not the username.",
+        `Account created for ${data.username}`
       );
 
-      // Empty the form. The next account needs its own phone number and
-      // username, because Django insists both are unique.
+
+      // Clear the form
       setFirstName("");
       setLastName("");
       setUsername("");
@@ -74,131 +84,142 @@ export default function Register() {
       setPhone("");
       setRole("student");
       setPassword("");
-    } catch (problem) {
-      setError(problem.message);
-    }
 
-    setIsSending(false);
+    } catch (error) {
+
+      // Show error
+      setError(error.message);
+
+    } finally {
+
+      setLoading(false);
+
+    }
   }
 
+
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-slate-100 p-4 py-10">
+
       <div className="mx-auto w-full max-w-lg">
-        <Link to="/" className="text-sm text-indigo-600 hover:underline">
-          &larr; Back
+
+        <Link
+          to="/"
+          className="text-sm font-medium text-indigo-600 transition hover:text-indigo-800"
+        >
+          &larr; Back to Home
         </Link>
 
-        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <h1 className="text-xl font-semibold text-slate-900">
-            Create an account
-          </h1>
+
+        <div className="mt-4 bg-white rounded-2xl shadow-lg p-8">
+
+          <h1 className="text-2xl font-bold text-slate-900">Create Account</h1>
+
           <p className="mt-1 mb-6 text-sm text-slate-500">
-            Admins only. Pick the role now, because nobody can promote
-            themselves later.
+            Add a new student, teacher or admin
           </p>
 
+
           {error && (
-            <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm whitespace-pre-line text-red-700">
+            <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </p>
           )}
 
+
           {success && (
-            <p className="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+            <p className="mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
               {success}
             </p>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              First name
-            </label>
-            <input
-              className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-              required
-              value={firstName}
-              onChange={(event) => setFirstName(event.target.value)}
-            />
 
-            {/* The only box Django does not insist on. */}
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Last name
-            </label>
-            <input
-              className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-              value={lastName}
-              onChange={(event) => setLastName(event.target.value)}
-            />
+          <form onSubmit={handleSubmit} className="space-y-4">
 
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Username
-            </label>
+            {/* First and last name sit side by side on wider screens */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+
+              <input
+                placeholder="First name"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                className={inputClass}
+              />
+
+
+              <input
+                placeholder="Last name"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+                className={inputClass}
+              />
+
+            </div>
+
+
             <input
-              className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+              placeholder="Username"
               required
               value={username}
               onChange={(event) => setUsername(event.target.value)}
+              className={inputClass}
             />
 
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Email
-            </label>
+
             <input
-              className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
               type="email"
+              placeholder="Email"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              className={inputClass}
             />
 
-            {/* This is what they will type on the login page. */}
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Phone number
-            </label>
+
             <input
-              className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-              placeholder="01711110001"
+              placeholder="Phone number"
               required
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
+              className={inputClass}
             />
 
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Role
-            </label>
+
             <select
-              className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
               value={role}
               onChange={(event) => setRole(event.target.value)}
+              className={inputClass}
             >
               <option value="student">Student</option>
               <option value="teacher">Teacher</option>
               <option value="admin">Admin</option>
             </select>
 
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Password
-            </label>
-            {/* Django checks the password itself: too short or too common
-                comes back as a "password: ..." line in the red box above. */}
+
             <input
-              className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
               type="password"
+              placeholder="Password"
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              className={inputClass}
             />
+
 
             <button
               type="submit"
-              disabled={isSending}
-              className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+              disabled={loading}
+              className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSending ? "Creating..." : "Create account"}
+              {loading ? "Creating..." : "Create Account"}
             </button>
+
           </form>
+
         </div>
+
       </div>
+
     </div>
   );
 }

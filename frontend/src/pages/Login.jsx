@@ -1,114 +1,110 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { login } from "../api.js";
 import { saveLogin } from "../auth.js";
 
+
+// Every input on this page looks the same,
+// so the classes live here instead of being repeated
+const inputClass =
+  "w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200";
+
+
 export default function Login() {
-  // useState gives us a value and a function that changes it. Calling that
-  // function tells React to draw the page again with the new value.
+
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-
-  // The red message under the heading. Empty means no message.
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // True while we are waiting for Django to answer, so the button can say
-  // "Logging in..." and stop a second click.
-  const [isSending, setIsSending] = useState(false);
-
-  // navigate() moves to another page in code, the way clicking a link does.
   const navigate = useNavigate();
 
+
   async function handleSubmit(event) {
-    // A form normally reloads the whole page when it is submitted. This stops
-    // that, because we want to send the request ourselves.
+
     event.preventDefault();
 
     setError("");
-    setIsSending(true);
+    setLoading(true);
 
     try {
+
+      // Send phone and password to Django
       const data = await login(phone, password);
 
-      // WATCH OUT: the token is inside data.tokens, not data.access.
+      // Save JWT and user information
       saveLogin(data.tokens.access, {
         username: data.username,
         role: data.role,
       });
 
+      // Go to Home page
       navigate("/");
-    } catch (problem) {
-      // Anything api.js threw ends up here, already worded for a human.
-      setError(problem.message);
-    }
 
-    setIsSending(false);
+    } catch (error) {
+
+      setError(error.message);
+
+    } finally {
+
+      setLoading(false);
+
+    }
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="mb-6 text-xl font-semibold text-slate-900">
-          Log in to LMS
-        </h1>
 
-        {/* Show the red box only when there is something to say. In JSX,
-            "a && b" means "draw b only if a is true". */}
+  return (
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
+
+        <h1 className="text-2xl font-bold text-slate-900">Login</h1>
+
+        <p className="mt-1 mb-6 text-sm text-slate-500">
+          Sign in to your LMS account
+        </p>
+
+
         {error && (
-          <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm whitespace-pre-line text-red-700">
+          <p className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </p>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Phone number
-          </label>
-          {/* value and onChange together are what make this box work. React
-              shows `phone` in the box, and every keystroke saves the new text
-              back into `phone`. Leave onChange out and the box will not type. */}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+
           <input
-            className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-            placeholder="01711110001"
-            required
+            type="text"
+            placeholder="Phone number"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
+            className={inputClass}
           />
 
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            Password
-          </label>
+
           <input
-            className="mb-4 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
             type="password"
-            required
+            placeholder="Password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            className={inputClass}
           />
+
 
           <button
             type="submit"
-            disabled={isSending}
-            className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+            disabled={loading}
+            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSending ? "Logging in..." : "Log in"}
+            {loading ? "Logging in..." : "Login"}
           </button>
+
         </form>
 
-        {/* import.meta.env.DEV is true while you run `npm run dev` and false
-            in a real build, so these details never reach a live site. */}
-        {import.meta.env.DEV && (
-          <p className="mt-5 rounded-md border border-dashed border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-            While developing: log in as the admin with 01700000000 and the
-            password you gave that account.
-          </p>
-        )}
-
-        {/* No sign-up link on purpose. Accounts are made by an admin. */}
-        <p className="mt-4 text-center text-sm text-slate-500">
-          No account? Ask an admin to make you one.
-        </p>
       </div>
+
     </div>
   );
 }
