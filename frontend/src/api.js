@@ -46,19 +46,27 @@ function readError(data) {
 
 // One function that does the talking, so login and register below stay short.
 //
-//   method  "GET" or "POST"
-//   path    the bit after /api, for example "/login/"
-//   body    the object to send, or nothing at all for a GET
-async function request(method, path, body) {
+//   method     "GET" or "POST"
+//   path       the bit after /api, for example "/login/"
+//   body       the object to send, or nothing at all for a GET
+//   sendToken  false for logging in. See the note below.
+async function request(method, path, body, sendToken = true) {
   // What we send along with the request. Content-Type tells Django that the
   // body is JSON and not, say, a filled-in HTML form.
   const headers = { "Content-Type": "application/json" };
 
   // If we are logged in, send the token too. This is what makes Django treat
   // the request as coming from us instead of from a stranger.
-  const token = getToken();
-  if (token) {
-    headers.Authorization = "Bearer " + token;
+  //
+  // Logging in is the one request that must NOT send a token. Django checks
+  // the token before it even looks at the login view, so an old token left
+  // over from a deleted or expired account gets you a 401 "User not found"
+  // and you can never log back in. Sending nothing avoids that.
+  if (sendToken) {
+    const token = getToken();
+    if (token) {
+      headers.Authorization = "Bearer " + token;
+    }
   }
 
   let response;
@@ -89,9 +97,10 @@ async function request(method, path, body) {
   return data;
 }
 
-// Log in with a phone number and a password.
+// Log in with a phone number and a password. The last argument is false so
+// that no leftover token is sent along - see the note inside request().
 export function login(phone, password) {
-  return request("POST", "/login/", { phone: phone, password: password });
+  return request("POST", "/login/", { phone: phone, password: password }, false);
 }
 
 // Create an account. Only an admin is allowed to do this, and the token added
