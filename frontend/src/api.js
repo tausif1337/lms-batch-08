@@ -1,84 +1,62 @@
-import { getToken } from "./auth.js";
+import { clearLogin, getToken } from "./auth.js";
 
-const BASE_URL = "http://127.0.0.1:8001/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8001/api";
 
-
-// This function talks to Django
 async function request(method, path, body, useToken = true) {
-
-  // Headers tell Django what we are sending
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
-
-  // If the user is logged in,
-  // send their JWT token to Django
+  const headers = { "Content-Type": "application/json" };
   if (useToken) {
     const token = getToken();
-
-    if (token) {
-      headers.Authorization = "Bearer " + token;
-    }
+    if (token) headers.Authorization = `Bearer ${token}`;
   }
 
+  const options = { method, headers };
+  if (body !== undefined && body !== null) options.body = JSON.stringify(body);
 
-  // Send the request to Django
-  const response = await fetch(BASE_URL + path, {
-    method: method,
-    headers: headers,
-    body: JSON.stringify(body),
-  });
+  const response = await fetch(BASE_URL + path, options);
+  const text = await response.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { detail: text }; }
 
-
-  // Convert Django's response into JavaScript
-  const data = await response.json();
-
-
-  // If Django says something went wrong
+  if (response.status === 401 && useToken) clearLogin();
   if (!response.ok) {
-
-    // Django REST Framework reports form problems per field, like
-    // { "password": ["This password is too common."] }. Those never
-    // land in `detail` or `error`, so pull out the first field message
-    // instead of falling back to a vague "Something went wrong".
     let message = data.detail || data.error;
-
     if (!message && data && typeof data === "object") {
-      const firstField = Object.values(data)[0];
-      message = Array.isArray(firstField) ? firstField[0] : firstField;
+      const first = Object.values(data)[0];
+      message = Array.isArray(first) ? first[0] : first;
     }
-
-    throw new Error(message || "Something went wrong");
+    throw new Error(message || `Request failed (${response.status})`);
   }
-
-
-  // Give the data back to the function that called request()
   return data;
 }
 
+export const login = (phone, password) => request("POST", "/login/", { phone, password }, false);
+export const register = (account) => request("POST", "/register/", account);
+export const getProfile = () => request("GET", "/profile/");
+export const updateProfile = (data) => request("PATCH", "/profile/", data);
+export const changePassword = (data) => request("POST", "/change-password/", data);
+export const requestPasswordReset = (email) => request("POST", "/password-reset/", { email }, false);
+export const confirmPasswordReset = (data) => request("POST", "/password-reset-confirm/", data, false);
 
-// Login
-export function login(phone, password) {
+const resources = {
+  teachers: "/teacher/",
+  students: "/student/",
+  courses: "/course/",
+  enrollments: "/enrollment/",
+  lessons: "/lesson/",
+  assignments: "/assignment/",
+  submissions: "/submission/",
+  results: "/results/",
+};
 
-  return request(
-    "POST",
-    "/login/",
-    {
-      phone: phone,
-      password: password,
-    },
-    false
-  );
+export async function listResource(resource) {
+  return request("GET", resources[resource]);
 }
-
-
-// Register
-export function register(newAccount) {
-
-  return request(
-    "POST",
-    "/register/",
-    newAccount
-  );
+export async function createResource(resource, data) {
+  return request("POST", resources[resource], data);
+}
+export async function updateResource(resource, id, data) {
+  return request("PATCH", `${resources[resource]}${id}/`, data);
+}
+export async function deleteResource(resource, id) {
+  return request("DELETE", `${resources[resource]}${id}/`);
 }
