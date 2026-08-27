@@ -12,6 +12,8 @@ import Assignments from "./pages/Assignments.jsx";
 import Submissions from "./pages/Submissions.jsx";
 import Results from "./pages/Results.jsx";
 import Login from "./pages/Login.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 import Accounts from "./pages/Accounts.jsx";
 import Profile from "./pages/Profile.jsx";
 import NotFound from "./pages/NotFound.jsx";
@@ -20,6 +22,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+
+      {/* The two halves of the password reset. Both are public: somebody who
+          has forgotten their password cannot be signed in to reach them. */}
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* /register used to be a public page. There is no public sign-up any
           more: an admin creates accounts at /accounts, inside the app. */}

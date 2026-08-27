@@ -9,6 +9,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   LogOut,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Send,
@@ -16,6 +17,7 @@ import {
   UserPlus,
   UserRound,
   Users,
+  X,
 } from "lucide-react";
 
 // Whether the sidebar is collapsed is remembered across reloads, the same way
@@ -60,9 +62,30 @@ export default function Sidebar() {
     () => localStorage.getItem(COLLAPSED_KEY) === "true",
   );
 
+  // Narrow screens have no room for a permanent menu, so there it slides in
+  // over the page instead. This is kept apart from `isCollapsed`, which is the
+  // wide-screen preference and the only one worth remembering.
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
   useEffect(() => {
     localStorage.setItem(COLLAPSED_KEY, String(isCollapsed));
   }, [isCollapsed]);
+
+  // Escape closes the drawer, the same as the confirm dialog.
+  useEffect(() => {
+    if (!isDrawerOpen) {
+      return;
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setIsDrawerOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDrawerOpen]);
 
   const visibleMenu = menu.filter(
     (item) => !item.onlyFor || item.onlyFor === user?.role,
@@ -73,35 +96,73 @@ export default function Sidebar() {
     navigate("/login", { replace: true });
   }
 
-  // Collapsed rows are icon-only, so the label has to survive as a tooltip.
-  const rowLayout = isCollapsed ? "justify-center px-0" : "gap-3 px-3";
+  // Tapping a link on a phone should take you to the page, not leave the menu
+  // sitting on top of it. Closing it here rather than in an effect on the
+  // address keeps it to the one event that actually calls for it.
+  function closeDrawer() {
+    setIsDrawerOpen(false);
+  }
+
+  // The drawer is always full width, so the icon-only layout is a wide-screen
+  // thing only. That is why the collapsed classes below carry md: prefixes
+  // instead of simply replacing the expanded ones.
+  const rowLayout = isCollapsed
+    ? "gap-3 px-3 md:justify-center md:px-0"
+    : "gap-3 px-3";
+
+  // Labels disappear when the sidebar is collapsed, but only from md up.
+  const labelVisibility = isCollapsed ? "md:hidden" : "";
 
   return (
     <div className="flex min-h-screen bg-slate-50">
+      {/* The backdrop exists only while the drawer is open, and only below md.
+          It is what catches a tap outside the menu. */}
+      {isDrawerOpen && (
+        <div
+          onClick={closeDrawer}
+          aria-hidden="true"
+          className="fixed inset-0 z-30 bg-slate-900/40 md:hidden"
+        />
+      )}
+
       <div
         className={
-          "flex flex-col border-r border-slate-200 bg-white transition-[width] duration-200 " +
-          (isCollapsed ? "w-16" : "w-60")
+          "fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-slate-200 bg-white transition-transform duration-200 " +
+          (isDrawerOpen ? "translate-x-0 " : "-translate-x-full ") +
+          // From md up it stops floating and becomes part of the layout again,
+          // and the animation moves from the position to the width.
+          "md:static md:translate-x-0 md:transition-[width] " +
+          (isCollapsed ? "md:w-16" : "md:w-60")
         }
       >
         <div
           className={
-            "flex items-center border-b border-slate-200 py-4 " +
-            (isCollapsed ? "justify-center px-2" : "gap-2 px-4")
+            "flex items-center gap-2 border-b border-slate-200 px-4 py-4 " +
+            (isCollapsed ? "md:justify-center md:px-2" : "")
           }
         >
-          {/* Collapsed, the toggle takes the logo's place: at this width there
-              is only room for one thing, and the way back out matters more. */}
+          {/* Collapsed, the toggle takes the logo's place: at that width there
+              is room for one thing, and the way back out matters more. The
+              drawer is never collapsed, so it keeps the logo either way. */}
           {isCollapsed ? (
-            <button
-              onClick={() => setIsCollapsed(false)}
-              title="Expand sidebar"
-              aria-label="Expand sidebar"
-              aria-expanded={false}
-              className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-            >
-              <PanelLeftOpen size={20} />
-            </button>
+            <>
+              <button
+                onClick={() => setIsCollapsed(false)}
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+                aria-expanded={false}
+                className="hidden rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 md:block"
+              >
+                <PanelLeftOpen size={20} />
+              </button>
+
+              <div className="flex items-center gap-2 md:hidden">
+                <GraduationCap size={22} className="text-indigo-600" />
+                <span className="text-lg font-semibold text-slate-900">
+                  LMS
+                </span>
+              </div>
+            </>
           ) : (
             <>
               <GraduationCap size={22} className="text-indigo-600" />
@@ -111,15 +172,25 @@ export default function Sidebar() {
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"
                 aria-expanded={true}
-                className="ml-auto rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                className="ml-auto hidden rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 md:block"
               >
                 <PanelLeftClose size={20} />
               </button>
             </>
           )}
+
+          {/* Closing the drawer from inside it. Wide screens keep the menu on
+              show, so there is nothing to close there. */}
+          <button
+            onClick={closeDrawer}
+            aria-label="Close menu"
+            className="ml-auto rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 md:hidden"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        <div className="flex-1 p-3">
+        <div className="flex-1 overflow-y-auto p-3">
           {visibleMenu.map((item) => {
             const isTheCurrentPage = location.pathname === item.address;
 
@@ -132,6 +203,7 @@ export default function Sidebar() {
               <Link
                 key={item.address}
                 to={item.address}
+                onClick={closeDrawer}
                 title={isCollapsed ? item.text : undefined}
                 className={
                   "mb-1 flex items-center rounded-md py-2 text-sm " +
@@ -141,7 +213,7 @@ export default function Sidebar() {
                 }
               >
                 {item.icon}
-                {!isCollapsed && item.text}
+                <span className={labelVisibility}>{item.text}</span>
               </Link>
             );
           })}
@@ -151,6 +223,7 @@ export default function Sidebar() {
           {/* The name doubles as the way into your own profile. */}
           <Link
             to="/profile"
+            onClick={closeDrawer}
             title={
               isCollapsed
                 ? `${user?.username ?? "Signed in"} (${roleLabel(user?.role)})`
@@ -158,21 +231,25 @@ export default function Sidebar() {
             }
             className={
               "mb-1 flex items-center rounded-md py-2 text-sm " +
-              (isCollapsed ? "justify-center px-0 " : "gap-2 px-3 ") +
+              rowLayout +
+              " " +
               (location.pathname === "/profile"
                 ? "bg-indigo-50 font-medium text-indigo-700"
                 : "text-slate-600 hover:bg-slate-100")
             }
           >
             <UserRound size={16} />
-            {!isCollapsed && (
-              <>
-                <span className="truncate">{user?.username ?? "Signed in"}</span>
-                <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                  {roleLabel(user?.role)}
-                </span>
-              </>
-            )}
+
+            <span
+              className={
+                "flex min-w-0 flex-1 items-center gap-2 " + labelVisibility
+              }
+            >
+              <span className="truncate">{user?.username ?? "Signed in"}</span>
+              <span className="ml-auto shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {roleLabel(user?.role)}
+              </span>
+            </span>
           </Link>
 
           <button
@@ -184,13 +261,31 @@ export default function Sidebar() {
             }
           >
             <LogOut size={16} />
-            {!isCollapsed && "Log out"}
+            <span className={labelVisibility}>Log out</span>
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto p-8">
-        <Outlet />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* The only way to reach the menu on a phone. It stays out of the way
+            on wider screens, where the sidebar is already there. */}
+        <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-3 md:hidden">
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={isDrawerOpen}
+            className="rounded-md p-1.5 text-slate-600 hover:bg-slate-100"
+          >
+            <Menu size={20} />
+          </button>
+
+          <GraduationCap size={20} className="text-indigo-600" />
+          <span className="font-semibold text-slate-900">LMS</span>
+        </div>
+
+        <div className="min-w-0 flex-1 p-4 md:p-8">
+          <Outlet />
+        </div>
       </div>
     </div>
   );

@@ -62,6 +62,8 @@ The frontend talks to `http://127.0.0.1:8001/api` by default. Set `VITE_API_URL`
 
 **There is no public sign-up.** An admin creates accounts on the **Accounts** page at http://localhost:5180/accounts, picking the role as they go. `/api/register/` returns 401 to anonymous callers and 403 to a signed-in teacher or student, so the old trick of posting to it directly does not work either. Visiting `/register` now just redirects to the login page.
 
+**Forgotten a password?** The login page links to http://localhost:5180/forgot-password, which asks for the email on the account and has the backend send a link. The link lands on `/reset-password`, carrying the `uid` and `token` it needs in the query string. In development the mail backend prints the email to the Django terminal rather than sending it, so the link is in that window — see [Known gaps](#known-gaps).
+
 ### Starting from an empty database
 
 `createsuperuser` alone is **not** enough to get into the app. Login looks you up by `Profile.phone`, and `createsuperuser` does not make a Profile, so that account can reach `/admin/` and nothing else. Three steps:
@@ -102,7 +104,7 @@ Three things are deliberately not on that page:
 
 Your **phone number is your login**, so changing it changes what you type next time; the page says so under the field. Phone and email both have to stay unique — email because password reset looks accounts up by it.
 
-Changing your password signs you out. Refresh tokens are blacklisted server-side, but an access token already issued cannot be revoked (a JWT is not looked up on each request), so the frontend ends the session itself. The login page you land on says nothing about why — carrying a message across that sign-out needs somewhere the router's own redirect cannot reach, and this app no longer does it.
+Changing your password signs you out. Refresh tokens are blacklisted server-side, but an access token already issued cannot be revoked (a JWT is not looked up on each request), so the frontend ends the session itself. The login page you land on says nothing about why: the session is gone by the time you get there, so there is nowhere left to keep the message. (A password *reset* does carry one across, because that path never had a session in the first place and can hand the line to the login page through the router.)
 
 ### What roles cannot do here
 
@@ -130,10 +132,11 @@ frontend/src/
   components/
     index.js          one import for all of the below
     Alert.jsx  Button.jsx  Checkbox.jsx  ConfirmDialog.jsx
-    Div.jsx  IconButton.jsx  Input.jsx  PageHeader.jsx
+    field.js  IconButton.jsx  Input.jsx  PageHeader.jsx
     ProtectedRoute.jsx  Select.jsx  Table.jsx  Textarea.jsx
   pages/
-    Login.jsx  Accounts.jsx  Profile.jsx  Dashboard.jsx  NotFound.jsx
+    Login.jsx  ForgotPassword.jsx  ResetPassword.jsx
+    Accounts.jsx  Profile.jsx  Dashboard.jsx  NotFound.jsx
     Students.jsx      <-- read this one first
     Teachers.jsx  Courses.jsx  Enrollments.jsx
     Lessons.jsx   Assignments.jsx
@@ -217,6 +220,6 @@ Note the naming: `/submission/` is singular but `/results/` is plural.
 
 ## Known gaps
 
-Password reset is not usable end to end. `EMAIL_BACKEND` is the console backend, so reset links only print to the terminal running Django, and no `/reset-password` page exists in the frontend yet. Someone who *knows* their password can change it from their profile page; someone who has forgotten it still needs an admin to reset it in Django admin.
+Password reset works end to end, but the email does not really leave the machine. `EMAIL_BACKEND` defaults to the console backend, so the link prints to the terminal running Django instead of being sent — copy it from there. Point `EMAIL_BACKEND` at SMTP to send it for real; `FRONTEND_PASSWORD_RESET_URL` is where the link aims, and defaults to the dev frontend on 5180.
 
 The Accounts page creates accounts but does not list them. Seeing who exists, changing a role, or deactivating somebody is done at http://127.0.0.1:8001/admin/backend/profile/.

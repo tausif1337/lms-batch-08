@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { nameFromLabel } from "./field.js";
 import { inputBox, labelText } from "./styles.js";
 
 export default function Input({ label, className = "", type = "text", ...rest }) {
@@ -15,12 +16,17 @@ export default function Input({ label, className = "", type = "text", ...rest })
   // with an id instead of by nesting.
   const id = useId();
 
+  // Spread after these two so a page can still pass its own.
+  const identity = { id, name: nameFromLabel(label) };
+
   if (!isPassword) {
     return (
-      <label className={className}>
-        <span className={labelText}>{label}</span>
-        <input className={inputBox} type={type} {...rest} />
-      </label>
+      <div className={className}>
+        <label htmlFor={id} className={labelText}>
+          {label}
+        </label>
+        <input className={inputBox} type={type} {...identity} {...rest} />
+      </div>
     );
   }
 
@@ -36,9 +42,9 @@ export default function Input({ label, className = "", type = "text", ...rest })
           right padding keeps the typed text from running underneath it. */}
       <div className="relative">
         <input
-          id={id}
           className={inputBox + " pr-10"}
           type={isShowing ? "text" : "password"}
+          {...identity}
           {...rest}
         />
 

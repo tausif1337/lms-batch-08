@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { GraduationCap } from "lucide-react";
 import { useAuth } from "../auth.js";
 import { Alert, Button, Input } from "../components/index.js";
@@ -23,6 +23,10 @@ export default function Login() {
 
   // ProtectedRoute stores the page you were trying to reach here.
   const goBackTo = location.state?.from ?? "/";
+
+  // /reset-password sends people here with a line to show once. It is read
+  // into state so dismissing it sticks — location.state survives a re-render.
+  const [notice, setNotice] = useState(() => location.state?.notice ?? "");
 
   async function logInWith(phoneToUse, passwordToUse) {
     setError("");
@@ -59,7 +63,10 @@ export default function Login() {
           <h1 className="text-xl font-semibold text-slate-900">Log in to LMS</h1>
         </div>
 
-        <Alert>{error}</Alert>
+        <Alert variant="success" onDismiss={() => setNotice("")}>
+          {notice}
+        </Alert>
+        <Alert onDismiss={() => setError("")}>{error}</Alert>
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
@@ -88,6 +95,15 @@ export default function Login() {
             {isSaving ? "Logging in..." : "Log in"}
           </Button>
         </form>
+
+        <p className="mt-3 text-center text-sm">
+          <Link
+            to="/forgot-password"
+            className="text-indigo-600 hover:underline"
+          >
+            Forgot your password?
+          </Link>
+        </p>
 
         {import.meta.env.DEV && (
           <div className="mt-5 rounded-md border border-dashed border-amber-300 bg-amber-50 p-3">

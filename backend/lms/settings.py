@@ -152,7 +152,12 @@ USE_I18N = True
 
 USE_TZ = True
 
-FRONTEND_PASSWORD_RESET_URL = os.getenv("FRONTEND_PASSWORD_RESET_URL", "http://localhost:5173/reset-password")
+# Where the emailed reset link points. The Vite dev server runs on 5180
+# (see frontend/vite.config.js), and /reset-password is the page that reads
+# the ?uid= and ?token= back off the link.
+FRONTEND_PASSWORD_RESET_URL = os.getenv(
+    "FRONTEND_PASSWORD_RESET_URL", "http://localhost:5180/reset-password"
+)
 
 PASSWORD_RESET_TIMEOUT = 60 * 60  # 1 hour
 

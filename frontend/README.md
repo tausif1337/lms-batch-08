@@ -1,39 +1,108 @@
-# LMS — the screens only
+# LMS — frontend
 
-This is a small Learning Management System, built with React. It shows
-teachers, students, courses, lessons, assignments and marks.
+The React half of a small Learning Management System. It talks to the Django
+backend in [`../backend`](../backend) over a JSON API and shows teachers,
+students, courses, enrollments, lessons, assignments, submissions and results.
 
-**There is no server and no database.** Everything you see comes from one file
-of made-up data. Nothing you type is saved. That is on purpose: it means you
-can read and change the whole thing without installing anything else.
+Everything on screen comes from the server. There is no mock data: if the
+backend is not running, the pages say so instead of inventing rows.
 
 ## Start it
 
-Open a terminal in this folder and run these two commands:
+The backend has to be up first — see [`../RUNNING.md`](../RUNNING.md). Then, in
+this folder:
 
 ```bash
 npm install
 npm run dev
 ```
 
-The second command prints a web address. Open it in your browser. Leave the
-terminal running while you work — when you save a file, the page updates by
-itself.
+That prints a web address (http://localhost:5180 unless the port is taken).
+Leave the terminal running while you work; saving a file updates the page.
+`Ctrl + C` stops it.
 
-To stop it, press `Ctrl + C` in that terminal.
+Two other commands:
+
+```bash
+npm run lint     # checks the code for mistakes
+npm run build    # packages the app into dist/
+```
+
+## Pointing it at a different backend
+
+By default it calls `http://127.0.0.1:8001/api`. To change that, make a
+`.env.local` file in this folder:
+
+```
+VITE_API_URL=http://127.0.0.1:8001/api
+```
+
+See [`.env.example`](.env.example). Whatever host you use has to be listed in
+`CORS_ALLOWED_ORIGINS` in `backend/lms/settings.py`, or the browser blocks the
+call before it leaves.
+
+## Logging in
+
+You sign in with a **phone number**, not a username. There is no public
+sign-up: an admin creates accounts from the Accounts page inside the app.
+
+If there is no admin account yet, make one with
+`python manage.py createsuperuser` in the backend folder — a superuser counts
+as an admin.
+
+While running `npm run dev`, the login page also lists the seeded local
+accounts with a one-click button. That block is dropped from `npm run build`.
+
+## The three roles
+
+The sidebar and the buttons on each page follow the role on your account. The
+server enforces the same rules, so hiding a button is only about not offering
+something that would fail.
+
+| | Admin | Teacher | Student |
+| --- | --- | --- | --- |
+| Teachers, Students | add, edit, delete | read | read |
+| Courses, Enrollments, Lessons, Assignments, Results | add, edit, delete | add, edit, delete | read |
+| Submissions | add, edit, delete | add, edit, delete | hand in only |
+| Accounts | yes | no | no |
+| Your own profile | yes | yes | yes |
+
+The copy of these rules used to decide which buttons to draw is in
+`src/permissions.js`. It mirrors `backend/permissions.py` — change one and
+change the other.
 
 ## Where everything is
 
 ```
 src/
-  main.jsx      the first file that runs. It puts the app on the page.
-  App.jsx       the list of addresses: "/teachers" shows the Teachers page
-  Sidebar.jsx   the menu down the left, and the frame around each page
-  data.js       ALL the data. Every table on screen comes from here.
-  index.css     one line, which turns Tailwind on
+  main.jsx           the first file that runs. It puts the app on the page.
+  App.jsx            the list of addresses: "/teachers" shows the Teachers page
+  api.js             every call to the backend, and the saved session
+  auth.js            the auth context and its useAuth() hook
+  AuthContext.jsx    holds who is logged in, and logs them in and out
+  permissions.js     which role may do what, for the buttons
+  Sidebar.jsx        the menu, and the frame around every signed-in page
+  index.css          one line, which turns Tailwind on
 
-  pages/        one file per screen
-    Dashboard.jsx     the eight counting tiles
+  components/        the shared pieces every page is built from
+    Alert.jsx          the coloured message strip
+    Button.jsx         primary, secondary and danger buttons
+    Checkbox.jsx
+    ConfirmDialog.jsx  replaces window.confirm() before a delete
+    IconButton.jsx     the pencil and bin buttons in a table row
+    Input.jsx          a labelled box; passwords get a show/hide eye
+    PageHeader.jsx     the title and subtitle at the top of a page
+    ProtectedRoute.jsx sends you to /login without a token
+    Select.jsx
+    Table.jsx          the header row; the pages supply the body
+    Textarea.jsx
+    index.js           one import line instead of eleven
+
+  pages/             one file per screen
+    Login.jsx           phone and password
+    ForgotPassword.jsx  step one of a reset: ask for the email
+    ResetPassword.jsx   step two: the ?uid= and ?token= from the emailed link
+    Dashboard.jsx       the eight counting tiles
     Teachers.jsx      <- READ THIS ONE FIRST
     Students.jsx
     Courses.jsx
@@ -42,29 +111,31 @@ src/
     Assignments.jsx
     Submissions.jsx
     Results.jsx
-    Login.jsx
-    Register.jsx
+    Accounts.jsx        an admin creating a login for somebody
+    Profile.jsx         your own details, and your own password
+    NotFound.jsx
 ```
-
-That is the whole app. Eleven pages and four other files.
 
 ## Read it in this order
 
-1. **`src/data.js`** — see what a teacher, a student and a course look like.
-2. **`src/pages/Teachers.jsx`** — the simplest full page. It is heavily
-   commented and explains each React idea the first time it appears.
+1. **`src/api.js`** — every request the app makes, in one file. It also holds
+   the two things about this backend that shape the rest: you log in with a
+   phone number, and the tokens arrive nested under `tokens`.
+2. **`src/pages/Teachers.jsx`** — the simplest full page. It is commented
+   step by step, and the other seven list pages are the same shape.
 3. **`src/pages/Courses.jsx`** — the same page again, plus one new idea:
-   looking up a name in another list.
-4. Everything else. Students, Lessons, Enrollments, Assignments, Submissions
-   and Results are all the same shape as Teachers.jsx. Once you have read one,
-   you can read them all.
+   showing a name that lives in another list.
+4. Everything else.
 
-Every list page is built in three parts, marked with big comment banners:
+Each list page is built the same way:
 
 ```
-1. REMEMBER THINGS   the useState lines, one per box in the form
-2. DO THINGS         the small functions the buttons call
-3. SHOW THINGS       the HTML that ends up on screen
+1. state for the rows, the form and the messages
+2. useEffect()    reads the list when the page opens
+3. reload()       re-runs that after a save or a delete
+4. handleSave()   creates a new row, or updates the one being edited
+5. askToDelete() / confirmDelete()   opens the dialog, then deletes
+6. the JSX: banners, form, table, confirm dialog
 ```
 
 ## What the buttons do
@@ -73,32 +144,30 @@ Every list page is built in three parts, marked with big comment banners:
 | --- | --- |
 | **Add** | Opens an empty form |
 | **Pencil** | Opens the form with that row's details filled in |
-| **Save** | Closes the form. Nothing is saved. |
-| **Cancel** / **X** | Closes the form |
-| **Bin** | Nothing. There is no place to delete from. |
-| **Log in** / **Create account** | Goes to the dashboard. No password is checked. |
-| **Log out** | Goes to the login screen. Nobody was logged in. |
+| **Save** | POSTs or PUTs to the backend, then reloads the table |
+| **Cancel** / **X** | Closes the form without saving |
+| **Bin** | Asks first, then DELETEs the row |
+| **Log in** | Checks the phone and password, and stores the token |
+| **Log out** | Discards the token and returns to the login page |
 
-## Change something
+## The session
 
-**Add a teacher to the list:** open `src/data.js`, find `export const teachers`,
-copy one of the blocks, change the `id` to a number nothing else is using, and
-save. The Teachers page and the dashboard count both update on their own.
+The access token lives in `localStorage`, so a page refresh does not sign you
+out. There is no refresh endpoint on this backend, so when a token is rejected
+the session is simply dropped and you are sent back to `/login`.
 
-**Change a colour:** the colours are Tailwind class names written straight into
-the HTML, like `bg-indigo-600`. Change it to `bg-green-600` and save.
+Changing your password ends the session on purpose: the tokens already issued
+are retired server-side, so you log in again with the new one.
 
-**Add a menu item:** open `src/Sidebar.jsx` and add a line to the `menu` list at
-the top.
+## Forgotten passwords
 
-## Things you will not find here
+`/forgot-password` asks the backend to email a link. The link lands on
+`/reset-password?uid=...&token=...`, which posts both back with the new
+password.
 
-No `fetch`, no login, no tokens, no shared component library, no state
-management library. Each page stands on its own and can be read top to bottom
-without opening another file.
-
-The price of that is repetition — the same button styling appears in several
-pages. That is a deliberate trade: less to jump between while you are learning.
+In development, Django's mail backend prints the email to its own terminal
+instead of sending it — copy the link out of there. Where the link points is
+`FRONTEND_PASSWORD_RESET_URL` in `backend/lms/settings.py`.
 
 ## The tools this uses
 
@@ -107,10 +176,3 @@ pages. That is a deliberate trade: less to jump between while you are learning.
 - **Tailwind CSS** — the styling, written as class names in the HTML
 - **lucide-react** — the small icons
 - **Vite** — runs it while you work, and packages it up for real use
-
-Two other commands exist if you want them:
-
-```bash
-npm run lint    # checks the code for mistakes
-npm run build   # packages the app into a dist/ folder
-```
