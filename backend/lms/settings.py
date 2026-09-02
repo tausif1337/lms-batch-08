@@ -76,6 +76,21 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    # Every list endpoint is filtered the same three ways:
+    #   ?search=      free text over the fields a view names in search_fields
+    #   ?<field>=     exact value or range, from the view's filter_fields
+    #   ?ordering=    a column name, with a leading "-" for descending
+    # A view that names none of those is unaffected: each backend is a no-op
+    # without its own declaration, so the detail routes are untouched.
+    "DEFAULT_FILTER_BACKENDS": (
+        "rest_framework.filters.SearchFilter",
+        "backend.filters.FieldFilterBackend",
+        "rest_framework.filters.OrderingFilter",
+    ),
+    # Lists come back as {count, page, results, ...} rather than a bare array.
+    # ?page_size= overrides the ten, up to the cap in StandardPagination.
+    "DEFAULT_PAGINATION_CLASS": "backend.pagination.StandardPagination",
+    "PAGE_SIZE": 10,
 }
 
 # The library default access token lifetime is 5 minutes, which forces a

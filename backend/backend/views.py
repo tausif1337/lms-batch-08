@@ -225,9 +225,32 @@ class ChangePasswordView(APIView):
         )
     
 class TeacherListCreateView(generics.ListCreateAPIView):
+    """Teachers, searchable by name, email or subject.
+
+    Filtering, ordering and paging are all read off the query string by the
+    backends named in REST_FRAMEWORK["DEFAULT_FILTER_BACKENDS"]. This class
+    only has to say which fields take part:
+
+        search_fields    what ?search= looks through
+        filter_fields    {query parameter: ORM lookup} for ?is_active=, etc.
+        ordering_fields  what ?ordering= will accept, to stop a caller
+                         sorting on a column that is not on the table
+        ordering         the sort used when the caller does not pick one.
+                         Paging needs a stable order, otherwise a row can
+                         appear on two pages or on neither.
+    """
+
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
     permission_classes = [AdminWrites]
+
+    search_fields = ["name", "email", "subject"]
+    filter_fields = {
+        "is_active": "is_active",
+        "subject": "subject__icontains",
+    }
+    ordering_fields = ["id", "name", "email", "subject", "is_active"]
+    ordering = ["id"]
 
 class TeacherRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Teacher.objects.all()
@@ -239,15 +262,35 @@ class StudentListCreateView(generics.ListCreateAPIView):
     serializer_class = StudentSerializer
     permission_classes = [AdminWrites]
 
+    search_fields = ["name", "email", "roll_number"]
+    filter_fields = {
+        "is_active": "is_active",
+        # A pair of parameters rather than one: "enrolled between these two
+        # dates" is two lookups on the same column.
+        "enrolled_from": "enrollment_date__gte",
+        "enrolled_to": "enrollment_date__lte",
+    }
+    ordering_fields = [
+        "id", "name", "email", "roll_number", "enrollment_date", "is_active",
+    ]
+    ordering = ["id"]
+
 class StudentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     permission_classes = [AdminWrites]
 
 class CourseListCreateView(generics.ListCreateAPIView):
-    queryset = Course.objects.all()
+    # select_related keeps ?search=<teacher name> and ?ordering=teacher__name
+    # to one query instead of one per row.
+    queryset = Course.objects.select_related("teacher")
     serializer_class = CourseSerializer
     permission_classes = [TeachingStaffWrites]
+
+    search_fields = ["title", "description", "teacher__name"]
+    filter_fields = {"teacher": "teacher"}
+    ordering_fields = ["id", "title", "teacher__name"]
+    ordering = ["id"]
 
 class CourseRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Course.objects.all()
@@ -256,9 +299,19 @@ class CourseRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
 
 class EnrollmentListCreateView(generics.ListCreateAPIView):
     """View to list and create enrollments."""
-    queryset = Enrollment.objects.all()
+    queryset = Enrollment.objects.select_related("student", "course")
     serializer_class = EnrollmentSerializer
     permission_classes = [TeachingStaffWrites]
+
+    search_fields = ["student__name", "student__roll_number", "course__title"]
+    filter_fields = {
+        "student": "student",
+        "course": "course",
+        "enrolled_from": "enrollment_date__gte",
+        "enrolled_to": "enrollment_date__lte",
+    }
+    ordering_fields = ["id", "student__name", "course__title", "enrollment_date"]
+    ordering = ["id"]
 
 class EnrollmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete an enrollment."""
@@ -268,9 +321,14 @@ class EnrollmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIVi
 
 class LessonListCreateView(generics.ListCreateAPIView):
     """View to list and create lessons."""
-    queryset = Lesson.objects.all()
+    queryset = Lesson.objects.select_related("course")
     serializer_class = LessonSerializer
     permission_classes = [TeachingStaffWrites]
+
+    search_fields = ["title", "description", "course__title"]
+    filter_fields = {"course": "course"}
+    ordering_fields = ["id", "title", "course__title"]
+    ordering = ["id"]
 
 class LessonRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete a lesson."""
@@ -280,9 +338,19 @@ class LessonRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
 
 class AssignmentListCreateView(generics.ListCreateAPIView):
     """View to list and create assignments."""
-    queryset = Assignment.objects.all()
+    queryset = Assignment.objects.select_related("course", "lesson")
     serializer_class = AssignmentSerializer
     permission_classes = [TeachingStaffWrites]
+
+    search_fields = ["title", "description", "course__title", "lesson__title"]
+    filter_fields = {
+        "course": "course",
+        "lesson": "lesson",
+        "due_from": "due_date__gte",
+        "due_to": "due_date__lte",
+    }
+    ordering_fields = ["id", "title", "due_date", "course__title", "lesson__title"]
+    ordering = ["id"]
 
 class AssignmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete an assignment."""
@@ -292,9 +360,22 @@ class AssignmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIVi
 
 class SubmissionListCreateView(generics.ListCreateAPIView):
     """View to list and create submissions."""
-    queryset = Submission.objects.all()
+    queryset = Submission.objects.select_related("assignment", "student")
     serializer_class = SubmissionSerializer
     permission_classes = [SubmissionWrites]
+
+    search_fields = ["content", "student__name", "assignment__title"]
+    filter_fields = {
+        "assignment": "assignment",
+        "student": "student",
+        # A submission has no course of its own; it borrows the one its
+        # assignment belongs to.
+        "course": "assignment__course",
+        "submitted_from": "submitted_at__gte",
+        "submitted_to": "submitted_at__lte",
+    }
+    ordering_fields = ["id", "submitted_at", "student__name", "assignment__title"]
+    ordering = ["id"]
 
 class SubmissionRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete a submission."""
@@ -304,9 +385,26 @@ class SubmissionRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIVi
 
 class ResultsListCreateView(generics.ListCreateAPIView):
     """View to list and create results."""
-    queryset = Results.objects.all()
+    queryset = Results.objects.select_related(
+        "submission", "submission__student", "submission__assignment",
+    )
     serializer_class = ResultSerializer
     permission_classes = [TeachingStaffWrites]
+
+    search_fields = [
+        "feedback",
+        "submission__student__name",
+        "submission__assignment__title",
+    ]
+    filter_fields = {
+        "submission": "submission",
+        "student": "submission__student",
+        "assignment": "submission__assignment",
+        "score_min": "score__gte",
+        "score_max": "score__lte",
+    }
+    ordering_fields = ["id", "score", "submission__student__name"]
+    ordering = ["id"]
 
 class ResultsRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete a result."""

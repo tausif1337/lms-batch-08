@@ -3,7 +3,10 @@
 // Two things about the backend shape the code here:
 //   - you log in with a phone number, and the tokens come back nested
 //     under `tokens`, so it is data.tokens.access and not data.access
-//   - list endpoints are not paginated, so they return a plain array
+//   - list endpoints are paginated and filtered, so a list call answers with
+//     {count, page, page_size, total_pages, next, previous, results} and not
+//     with a bare array. list() hands that envelope back untouched; listAll()
+//     is the one that walks every page and returns just the rows.
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8001/api";
 
@@ -182,11 +185,80 @@ export function confirmPasswordReset(details) {
 
 // --- resources ----------------------------------------------------------
 
-// Every resource has the same four calls, so they are built from the path
+// {page: 2, search: "", course: 3} becomes "?page=2&course=3".
+//
+// Empty values are dropped rather than sent as blanks. An empty ?search= or
+// ?course= would be the filter sitting on "Any", and the server ignores those
+// anyway, so leaving them out keeps the address bar and the network tab
+// readable.
+export function toQueryString(params) {
+  if (!params) {
+    return "";
+  }
+
+  const parts = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
+    parts.set(key, String(value));
+  }
+
+  const text = parts.toString();
+  return text ? `?${text}` : "";
+}
+
+// The largest page the server will hand out in one go. Kept in step with
+// max_page_size in backend/pagination.py.
+const BIGGEST_PAGE = 200;
+
+// Every row, gathered a page at a time.
+//
+// The tables page through the data, but the dropdowns and the id-to-name
+// lookups need the whole list: a course row carries {"teacher": 3}, and
+// showing the teacher's name means holding every teacher. Those lists are
+// small, and this is the only place that pays for them.
+async function everyPage(path, params) {
+  const rows = [];
+
+  for (let page = 1; ; page += 1) {
+    const body = await request(
+      `/${path}/${toQueryString({ ...params, page, page_size: BIGGEST_PAGE })}`,
+    );
+
+    // An endpoint that was never paginated would answer with a plain array.
+    if (Array.isArray(body)) {
+      return body;
+    }
+
+    rows.push(...(body?.results ?? []));
+
+    if (!body?.next) {
+      return rows;
+    }
+  }
+}
+
+// Every resource has the same five calls, so they are built from the path
 // once instead of being written out eight times over.
 function resource(path) {
   return {
-    list: () => request(`/${path}/`),
+    // One page, plus the counts around it. `params` carries page, page_size,
+    // search, ordering and whatever filters the view accepts.
+    list: (params) => request(`/${path}/${toQueryString(params)}`),
+
+    // Every row, with no envelope. For dropdowns and name lookups.
+    listAll: (params) => everyPage(path, params),
+
+    // How many rows match, without downloading any of them. The dashboard
+    // tiles use this, so a count no longer costs a full table.
+    count: async (params) => {
+      const body = await request(
+        `/${path}/${toQueryString({ ...params, page_size: 1 })}`,
+      );
+      return Array.isArray(body) ? body.length : (body?.count ?? 0);
+    },
+
     create: (values) =>
       request(`/${path}/`, { method: "POST", body: JSON.stringify(values) }),
     update: (id, values) =>

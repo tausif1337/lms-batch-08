@@ -3,29 +3,44 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { teachersApi } from "../api.js";
 import { useAuth } from "../auth.js";
 import { canCreate, canWrite } from "../permissions.js";
+import useTableQuery from "../useTableQuery.js";
 import {
   Alert,
   Button,
   Checkbox,
   ConfirmDialog,
+  FilterBar,
   IconButton,
   Input,
   PageHeader,
+  Pagination,
+  Select,
   Table,
 } from "../components/index.js";
 
 // Every resource page follows the same six steps:
 //   1. state for the rows, the form, and the errors
-//   2. useEffect()     reads the list from the API when the page opens
+//   2. useEffect()     reads one page of rows from the API
 //   3. reload()        re-runs that effect after a save or a delete
 //   4. handleSave()    creates a new row, or updates the one being edited
 //   5. askToDelete() / confirmDelete()  opens the dialog, then deletes
-//   6. the JSX: banners, form, table, confirm dialog
+//   6. the JSX: banners, form, filters, table, pages, confirm dialog
 export default function Teachers() {
   const [teachers, setTeachers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  // How many teachers match the filters, and how many pages that is. Both
+  // come off the response, not off teachers.length, which only ever counts
+  // the page on screen.
+  const [count, setCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // The search box, the page number, the sort column and the filters below.
+  // The server does the work; this only holds what to ask it for.
+  const query = useTableQuery({ ordering: "id" });
+  const { params: queryParams, stepBackAfter } = query;
 
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
@@ -55,20 +70,48 @@ export default function Teachers() {
   }
 
   useEffect(() => {
+    // Typing in the search box fires a request per pause, and a slow one can
+    // land after a later, quicker one. This flag makes the page ignore the
+    // answer to a question it has stopped asking.
+    let isCurrent = true;
+
     async function load() {
+      setIsLoading(true);
+
       try {
-        // The list endpoint is not paginated, so this is a plain array.
-        setTeachers(await teachersApi.list());
+        // {count, page, total_pages, results}, not a plain array.
+        const body = await teachersApi.list(queryParams);
+        if (!isCurrent) {
+          return;
+        }
+        setTeachers(body.results);
+        setCount(body.count);
+        setTotalPages(body.total_pages);
         setError("");
       } catch (problem) {
+        if (!isCurrent) {
+          return;
+        }
+        // Deleting the last row on the last page leaves the page number
+        // pointing past the end. stepBackAfter() moves back one and the
+        // effect runs again.
+        if (stepBackAfter(problem)) {
+          return;
+        }
         setError(problem.message);
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
 
     load();
-  }, [reloadCount]);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reloadCount, queryParams, stepBackAfter]);
 
   function openEmptyForm() {
     setName("");
@@ -212,7 +255,9 @@ export default function Teachers() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {isLoading ? "Loading..." : `${teachers.length} teachers`}
+            {isLoading
+              ? "Loading..."
+              : `${count} ${count === 1 ? "teacher" : "teachers"}`}
           </h2>
           {mayCreate && (
             <Button onClick={openEmptyForm}>
@@ -222,7 +267,43 @@ export default function Teachers() {
           )}
         </div>
 
-        <Table columns={["ID", "Name", "Email", "Subject", "Active", "Action"]}>
+        <FilterBar
+          search={query.searchBox}
+          onSearchChange={query.setSearchBox}
+          placeholder="Name, email or subject"
+          isFiltered={query.isFiltered}
+          onClear={query.clear}
+        >
+          <Select
+            label="Status"
+            className="min-w-40"
+            value={query.filters.is_active ?? ""}
+            onChange={(event) => query.setFilter("is_active", event.target.value)}
+          >
+            <option value="">Any status</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </Select>
+        </FilterBar>
+
+        <Table
+          columns={[
+            { label: "ID", field: "id" },
+            { label: "Name", field: "name" },
+            { label: "Email", field: "email" },
+            { label: "Subject", field: "subject" },
+            { label: "Active", field: "is_active" },
+            "Action",
+          ]}
+          ordering={query.ordering}
+          onSort={query.toggleSort}
+          isEmpty={!isLoading && teachers.length === 0}
+          emptyMessage={
+            query.isFiltered
+              ? "No teacher matches those filters."
+              : "No teachers yet."
+          }
+        >
           {teachers.map((teacher) => (
             <tr
               key={teacher.id}
@@ -262,6 +343,15 @@ export default function Teachers() {
             </tr>
           ))}
         </Table>
+
+        <Pagination
+          page={query.page}
+          pageSize={query.pageSize}
+          count={count}
+          totalPages={totalPages}
+          onPageChange={query.setPage}
+          onPageSizeChange={query.setPageSize}
+        />
       </div>
 
       <ConfirmDialog
