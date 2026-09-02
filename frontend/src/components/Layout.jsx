@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { BookOpen, GraduationCap, LayoutDashboard, LogOut, Menu, UserRound, Users, X } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, LogOut, Menu, UserPlus, UserRound, Users, X } from "lucide-react";
 import { useState } from "react";
-import { clearLogin, getUser } from "../auth.js";
+import { clearLogin, getRefreshToken, getUser } from "../auth.js";
+import { logout as endSessionOnServer } from "../api.js";
 
 const nav = [
   ["Dashboard", "/dashboard", LayoutDashboard, ["admin", "teacher", "student"]],
@@ -13,6 +14,7 @@ const nav = [
   ["Enrollments", "/enrollments", Users, ["admin", "teacher"]],
   ["Teachers", "/teachers", Users, ["admin"]],
   ["Students", "/students", Users, ["admin"]],
+  ["Create account", "/register", UserPlus, ["admin"]],
 ];
 
 export default function Layout({ children, title }) {
@@ -20,19 +22,33 @@ export default function Layout({ children, title }) {
   const user = getUser();
   const navigate = useNavigate();
   const items = nav.filter(([, , , roles]) => roles.includes(user?.role));
-  const logout = () => { clearLogin(); navigate("/login", { replace: true }); };
+  // Retire the refresh token server-side first. Clearing localStorage alone
+  // only hides it: anything that copied it could keep trading it for access
+  // tokens all week. The sign-out happens either way, so a failed call is not
+  // worth blocking on.
+  const logout = async () => {
+    // Server first, while the access token is still there to authorise the
+    // call. Clearing local state up front would make this request a 401 and
+    // send the interceptor chasing a refresh token that is already gone.
+    const refresh = getRefreshToken();
+    if (refresh) {
+      try { await endSessionOnServer(refresh); } catch { /* signing out locally regardless */ }
+    }
+    clearLogin();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-950 text-white transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-        <div className="flex h-16 items-center justify-between border-b border-white/10 px-5">
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-slate-950 text-white transition-transform ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-5">
           <div className="flex items-center gap-2 font-bold"><BookOpen className="h-6 w-6" /> LMS</div>
           <button className="lg:hidden" onClick={() => setOpen(false)}><X /></button>
         </div>
-        <nav className="space-y-1 p-3">
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {items.map(([label, path, Icon]) => <NavLink key={path} to={path} onClick={() => setOpen(false)} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm ${isActive ? "bg-indigo-600" : "text-slate-300 hover:bg-white/10 hover:text-white"}`}><Icon className="h-4 w-4" />{label}</NavLink>)}
         </nav>
-        <div className="absolute bottom-0 w-full border-t border-white/10 p-3">
+        <div className="shrink-0 border-t border-white/10 p-3">
           <NavLink to="/profile" className="mb-2 flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/10"><UserRound className="h-4 w-4" />Profile</NavLink>
           <button onClick={logout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/10"><LogOut className="h-4 w-4" />Log out</button>
         </div>

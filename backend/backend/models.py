@@ -34,6 +34,19 @@ class Teacher(models.Model):
         return f"{self.name} - {self.subject}"
     
 class Student(models.Model):
+    # The login this student record belongs to. Without it the server has no
+    # way to tell whose work a submission is, so it has to take the client's
+    # word for it — which is not something a student should be trusted with.
+    #
+    # Nullable because a record can outlive the account, and because rows that
+    # predate this field may never have had one.
+    user = models.OneToOneField(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="student_record",
+    )
     name = models.CharField(max_length=100,blank=True, null=True)
     email=models.EmailField(blank=True, null=True)
     enrollment_date = models.DateField()
@@ -46,7 +59,7 @@ class Student(models.Model):
 class Course(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.PROTECT)
     
 
     def __str__(self):
@@ -54,9 +67,17 @@ class Course(models.Model):
 
 
 class Enrollment(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.PROTECT)
+    course = models.ForeignKey(Course, on_delete=models.PROTECT)
     enrollment_date = models.DateField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "course"],
+                name="unique_student_per_course",
+            )
+        ]
 
     def __str__(self):
         return f"{self.student.name} enrolled in {self.course.title}"
@@ -64,7 +85,7 @@ class Enrollment(models.Model):
 class Lesson(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.PROTECT)
 
     def __str__(self):
         return self.title
@@ -72,8 +93,8 @@ class Lesson(models.Model):
 class Assignment(models.Model):
     title = models.CharField(max_length=100)
     description = models.TextField()
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    lesson = models.ForeignKey(Lesson, on_delete=models.PROTECT)
+    course = models.ForeignKey(Course, on_delete=models.PROTECT)
     due_date = models.DateTimeField()
 
 
@@ -81,8 +102,8 @@ class Assignment(models.Model):
         return self.title
 
 class Submission(models.Model):
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE)
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    assignment = models.ForeignKey(Assignment, on_delete=models.PROTECT)
+    student = models.ForeignKey(Student, on_delete=models.PROTECT)
     submitted_at = models.DateTimeField(auto_now_add=True)
     content = models.TextField()
 

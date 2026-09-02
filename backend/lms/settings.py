@@ -76,13 +76,20 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    # Deleting a row other rows depend on is refused by the database. Without
+    # this the refusal would surface as a 500 with nothing to show the user.
+    "EXCEPTION_HANDLER": "backend.exceptions.exception_handler",
 }
 
 # The library default access token lifetime is 5 minutes, which forces a
-# re-login mid-task during development. There is no token refresh endpoint,
-# so the access token is widened instead.
+# re-login mid-task. /api/token/refresh/ now trades a refresh token for a new
+# access token and the frontend does that on its own, so the access token can
+# be short again: a stolen one stops working within the hour.
+#
+# Refresh tokens are blacklisted on a password change, so the refresh cannot
+# be used to sit out a lockout.
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
@@ -152,7 +159,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-FRONTEND_PASSWORD_RESET_URL = os.getenv("FRONTEND_PASSWORD_RESET_URL", "http://localhost:5173/reset-password")
+FRONTEND_PASSWORD_RESET_URL = os.getenv("FRONTEND_PASSWORD_RESET_URL", "http://localhost:5180/reset-password")
 
 PASSWORD_RESET_TIMEOUT = 60 * 60  # 1 hour
 

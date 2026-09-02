@@ -26,14 +26,14 @@ export default function App() {
       <Route path="/register" element={<Protected roles={["admin"]}><Register /></Protected>} />
       <Route path="/dashboard" element={<Protected><Dashboard /></Protected>} />
       <Route path="/profile" element={<Protected><Profile /></Protected>} />
-      <Route path="/teachers" element={<Protected roles={["admin"]}><ResourcePage resource="teachers" /></Protected>} />
-      <Route path="/students" element={<Protected roles={["admin"]}><ResourcePage resource="students" /></Protected>} />
-      <Route path="/courses" element={<Protected roles={["admin", "teacher"]}><ResourcePage resource="courses" /></Protected>} />
-      <Route path="/enrollments" element={<Protected roles={["admin", "teacher"]}><ResourcePage resource="enrollments" /></Protected>} />
-      <Route path="/lessons" element={<Protected roles={["admin", "teacher"]}><ResourcePage resource="lessons" /></Protected>} />
-      <Route path="/assignments" element={<Protected roles={["admin", "teacher"]}><ResourcePage resource="assignments" /></Protected>} />
-      <Route path="/submissions" element={<Protected><ResourcePage resource="submissions" /></Protected>} />
-      <Route path="/results" element={<Protected roles={["admin", "teacher"]}><ResourcePage resource="results" /></Protected>} />
+      <Route path="/teachers" element={<Protected roles={["admin"]}><ResourcePage key="teachers" resource="teachers" /></Protected>} />
+      <Route path="/students" element={<Protected roles={["admin"]}><ResourcePage key="students" resource="students" /></Protected>} />
+      <Route path="/courses" element={<Protected><ResourcePage key="courses" resource="courses" /></Protected>} />
+      <Route path="/enrollments" element={<Protected roles={["admin", "teacher"]}><ResourcePage key="enrollments" resource="enrollments" /></Protected>} />
+      <Route path="/lessons" element={<Protected><ResourcePage key="lessons" resource="lessons" /></Protected>} />
+      <Route path="/assignments" element={<Protected><ResourcePage key="assignments" resource="assignments" /></Protected>} />
+      <Route path="/submissions" element={<Protected><ResourcePage key="submissions" resource="submissions" /></Protected>} />
+      <Route path="/results" element={<Protected><ResourcePage key="results" resource="results" /></Protected>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

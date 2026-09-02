@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.tokens import default_token_generator
@@ -157,6 +158,38 @@ class LoginView(APIView):
             'tokens': tokens
         })
 
+class LogoutView(APIView):
+    """Hand back the refresh token so it stops working.
+
+    Clearing localStorage only hides the tokens from the browser; anything that
+    copied the refresh token first would still be able to trade it for access
+    tokens for the rest of the week. Blacklisting it here is what actually ends
+    the session.
+
+    The access token already issued cannot be revoked — JWTs are not looked up
+    per request — so it dies on its own within the hour.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        refresh = request.data.get("refresh")
+        if not refresh:
+            return Response(
+                {"detail": "Send the refresh token you want retired."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            RefreshToken(refresh).blacklist()
+        except Exception:
+            # Already expired, already blacklisted, or simply not a token. The
+            # caller wanted it dead either way, so this is not worth an error.
+            pass
+
+        return Response({"detail": "Signed out."}, status=status.HTTP_200_OK)
+
+
 class ProtectedView(APIView):
     """Your own account: GET to read it, PATCH to change it.
 
@@ -290,26 +323,76 @@ class AssignmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIVi
     serializer_class = AssignmentSerializer
     permission_classes = [TeachingStaffWrites]
 
-class SubmissionListCreateView(generics.ListCreateAPIView):
+def student_record_of(user):
+    """The Student row that belongs to this login, or None."""
+    return Student.objects.filter(user=user).first()
+
+
+class OwnWorkOnly:
+    """Staff see the whole list; a student sees only their own rows.
+
+    Marks and other people's work are not a student's to read, so the filter
+    happens here rather than being left to the frontend to hide.
+
+    A student with no Student record linked to their account has no rows of
+    their own, so they get an empty list rather than everybody else's.
+    """
+
+    #: How to reach the owning Student from this view's model.
+    owner_lookup = "student"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        if role_of(self.request.user) != Profile.STUDENT:
+            return queryset
+
+        record = student_record_of(self.request.user)
+        if record is None:
+            return queryset.none()
+
+        return queryset.filter(**{self.owner_lookup: record})
+
+
+class SubmissionListCreateView(OwnWorkOnly, generics.ListCreateAPIView):
     """View to list and create submissions."""
     queryset = Submission.objects.all()
     serializer_class = SubmissionSerializer
     permission_classes = [SubmissionWrites]
 
-class SubmissionRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    def perform_create(self, serializer):
+        if role_of(self.request.user) != Profile.STUDENT:
+            serializer.save()
+            return
+
+        record = student_record_of(self.request.user)
+        if record is None:
+            raise ValidationError({
+                'student': 'Your account is not linked to a student record yet, '
+                           'so there is nothing to hand this in under. Ask an admin.'
+            })
+
+        # Set here, not taken from the request: this is the one place that
+        # knows whose work it really is.
+        serializer.save(student=record)
+
+
+class SubmissionRetrieveUpdateDestroyAPIView(OwnWorkOnly, generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete a submission."""
     queryset = Submission.objects.all()
     serializer_class = SubmissionSerializer
     permission_classes = [SubmissionWrites]
 
-class ResultsListCreateView(generics.ListCreateAPIView):
+class ResultsListCreateView(OwnWorkOnly, generics.ListCreateAPIView):
     """View to list and create results."""
     queryset = Results.objects.all()
     serializer_class = ResultSerializer
     permission_classes = [TeachingStaffWrites]
+    owner_lookup = "submission__student"
 
-class ResultsRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+class ResultsRetrieveUpdateDestroyAPIView(OwnWorkOnly, generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete a result."""
     queryset = Results.objects.all()
     serializer_class = ResultSerializer
     permission_classes = [TeachingStaffWrites]
+    owner_lookup = "submission__student"

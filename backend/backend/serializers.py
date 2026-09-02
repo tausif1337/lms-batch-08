@@ -1,4 +1,6 @@
 from .models import  Assignment, Enrollment, Lesson, Profile, Results, Submission, Teacher, Student,Course
+from .permissions import role_of
+from django.utils import timezone
 from django.db import transaction
 from rest_framework import serializers
 from django.contrib.auth.models import User
@@ -41,6 +43,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("That username is already taken.")
         return value
 
+    def validate_email(self, value):
+        # Password reset finds an account by email, so two accounts sharing one
+        # would leave the second unable to ever reset. ProfileUpdateSerializer
+        # already refuses this; registration has to agree.
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Another account already uses that email address.")
+        return value
+
     def validate_password(self, value):
         # Run Django's own password rules, the same ones the reset flow uses.
         validate_password(value)
@@ -62,6 +72,19 @@ class RegisterSerializer(serializers.ModelSerializer):
             last_name=last_name,
         )
         Profile.objects.create(user=user, phone=phone, role=role)
+
+        # A student login is useless on its own: handing work in needs a
+        # Student row to hang it off. Making it here means the account and the
+        # record are linked from the start, instead of an admin creating two
+        # separate things and nothing tying them together.
+        if role == Profile.STUDENT:
+            Student.objects.create(
+                user=user,
+                name=f"{first_name} {last_name}".strip() or user.username,
+                email=email,
+                enrollment_date=timezone.localdate(),
+            )
+
         return user
 
     def to_representation(self, instance):
@@ -207,9 +230,16 @@ class TeacherSerializer(serializers.ModelSerializer):
         model = Teacher
         fields = ['id', 'name', 'email', 'subject', 'is_active']
 class StudentSerializer(serializers.ModelSerializer):
+    # Which login this record belongs to, so an admin can see at a glance
+    # which students can actually sign in and hand work in.
+    account = serializers.SerializerMethodField()
+
     class Meta:
         model = Student
-        fields = ['id', 'name', 'email', 'enrollment_date', 'is_active', 'roll_number']
+        fields = ['id', 'account', 'name', 'email', 'enrollment_date', 'is_active', 'roll_number']
+
+    def get_account(self, obj):
+        return obj.user.username if obj.user else None
 
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -220,6 +250,13 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Enrollment
         fields = ['id', 'student', 'course', 'enrollment_date']
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=Enrollment.objects.all(),
+                fields=['student', 'course'],
+                message='That student is already enrolled on that course.',
+            )
+        ]
 
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
@@ -229,11 +266,50 @@ class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
         fields = ['id', 'title', 'description', 'lesson', 'due_date', 'course']
+
+    def validate(self, attrs):
+        # Both are set on the row, so they have to agree — otherwise an
+        # assignment shows up under a course whose lessons never mention it.
+        lesson = attrs.get('lesson', getattr(self.instance, 'lesson', None))
+        course = attrs.get('course', getattr(self.instance, 'course', None))
+
+        if lesson and course and lesson.course_id != course.id:
+            raise serializers.ValidationError({
+                'lesson': f'That lesson belongs to "{lesson.course.title}", not "{course.title}".'
+            })
+
+        return attrs
 class SubmissionSerializer(serializers.ModelSerializer):
+    # A student does not get to say whose submission this is; the view fills it
+    # in from their own account. Teachers and admins still have to name one,
+    # which is what validate() below insists on.
+    student = serializers.PrimaryKeyRelatedField(
+        queryset=Student.objects.all(),
+        required=False,
+    )
+
     class Meta:
         model = Submission
         fields = ['id', 'assignment', 'student', 'submitted_at', 'content']
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        caller = request.user if request else None
+
+        if role_of(caller) == Profile.STUDENT:
+            # Ignore anything they sent: perform_create overwrites it.
+            attrs.pop('student', None)
+            return attrs
+
+        if self.instance is None and 'student' not in attrs:
+            raise serializers.ValidationError({'student': 'This field is required.'})
+
+        return attrs
 class ResultSerializer(serializers.ModelSerializer):
+    # There is no fixed total to check against — an assignment may be out of 10
+    # or out of 100 — but a negative mark is never meant.
+    score = serializers.FloatField(min_value=0)
+
     class Meta:
         model = Results
         fields = ['id', 'submission', 'score', 'feedback']

@@ -83,9 +83,12 @@ class TeachingStaffWrites(RoleWritePermission):
 class SubmissionWrites(RoleWritePermission):
     """Same as above, except a student may hand work in.
 
-    A student cannot edit or delete a submission, because nothing links a
-    Student row to a login account — so the server has no way to tell whose
-    work it is. Handing in is the one write that is safe without that link.
+    Student.user now says whose work a submission is, so the server fills the
+    owner in itself and a student only ever sees their own rows.
+
+    Editing and deleting stay closed to them anyway: work that has been handed
+    in and possibly marked is not something the person who wrote it should be
+    able to quietly rewrite. Handing in is the one write they get.
     """
 
     roles_that_may_write = (Profile.ADMIN, Profile.TEACHER)

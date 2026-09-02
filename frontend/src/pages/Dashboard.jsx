@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { BookOpen, GraduationCap, ShieldCheck, Users } from "lucide-react";
+import { BookOpen, GraduationCap, ShieldCheck, UserPlus, Users } from "lucide-react";
 import Layout from "../components/Layout.jsx";
 import { getUser } from "../auth.js";
 
@@ -9,6 +9,7 @@ const cards = {
     ["Students", "Manage student records", "/students", Users],
     ["Courses", "Manage courses", "/courses", BookOpen],
     ["Enrollments", "Manage enrollments", "/enrollments", GraduationCap],
+    ["Create account", "Add a student, teacher or admin", "/register", UserPlus],
   ],
   teacher: [
     ["Courses", "Manage your course catalog", "/courses", BookOpen],
@@ -21,6 +22,7 @@ const cards = {
     ["Lessons", "View course lessons", "/lessons", GraduationCap],
     ["Assignments", "View your assignments", "/assignments", BookOpen],
     ["Submissions", "Submit and review work", "/submissions", ShieldCheck],
+    ["Results", "See your grades and feedback", "/results", ShieldCheck],
   ],
 };
 
