@@ -1,124 +1,197 @@
-import axios from "axios";
-import { clearLogin, getRefreshToken, getToken, setToken } from "./auth.js";
+import {
+  forgetLoggedInUser,
+  getAccessToken,
+  getRefreshToken,
+  saveNewAccessToken,
+} from "./auth.js";
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8001/api";
+const SERVER_ADDRESS = import.meta.env.VITE_API_URL || "http://127.0.0.1:8001/api";
 
-const client = axios.create({
-  baseURL: BASE_URL,
-  headers: { "Content-Type": "application/json" },
-});
+const COULD_NOT_REACH_SERVER =
+  "Could not reach the server. Check that the backend is running, then try again.";
 
-// A second instance for the refresh call itself. Using `client` would send the
-// dead access token along and, on failure, trip the interceptor below into
-// trying to refresh the refresh.
-const plain = axios.create({ baseURL: BASE_URL, headers: { "Content-Type": "application/json" } });
+async function sendToServer(method, address, dataToSend, accessToken) {
+  const settings = {
+    method,
+    headers: { "Content-Type": "application/json" },
+  };
 
-client.interceptors.request.use(config => {
-  if (config.useToken === false) return config;
+  if (accessToken) {
+    settings.headers.Authorization = `Bearer ${accessToken}`;
+  }
 
-  const token = getToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// Several requests can be in flight when the access token expires, and they
-// would all try to refresh at once. Holding the promise means the others wait
-// on the first instead of spending the refresh token several times over.
-let refreshInFlight = null;
-
-async function refreshAccessToken() {
-  const refresh = getRefreshToken();
-  if (!refresh) return null;
+  if (dataToSend !== undefined) {
+    settings.body = JSON.stringify(dataToSend);
+  }
 
   try {
-    const { data } = await plain.post("/token/refresh/", { refresh });
-    if (!data.access) return null;
-    setToken(data.access);
-    return data.access;
+    return await fetch(`${SERVER_ADDRESS}${address}`, settings);
   } catch {
-    // A refresh token that is expired, or blacklisted by a password change,
-    // ends the session for real.
+    throw new Error(COULD_NOT_REACH_SERVER);
+  }
+}
+
+async function readAnswer(answer) {
+  const text = await answer.text();
+
+  if (!text) {
     return null;
   }
-}
 
-function renewAccessToken() {
-  if (!refreshInFlight) {
-    refreshInFlight = refreshAccessToken().finally(() => { refreshInFlight = null; });
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
   }
-  return refreshInFlight;
 }
 
-function endSession(cause) {
-  clearLogin();
-  if (window.location.pathname !== "/login") window.location.assign("/login");
-  return new Error("Your session has ended. Please log in again.", { cause });
-}
+function readableErrorMessage(answerBody, statusCode) {
+  const requestFailed = `Request failed (${statusCode})`;
 
-// Django REST Framework reports a field error as {"phone": ["..."]} and a
-// general one as {"detail": "..."}. Either way the page wants one sentence.
-function messageFrom(error) {
-  const data = error.response?.data;
-
-  // No response at all: the server is down, or the browser blocked the call.
-  // Axios words this "Network Error", which tells a user nothing.
-  if (!error.response) {
-    return "Could not reach the server. Check that the backend is running, then try again.";
+  if (!answerBody) {
+    return requestFailed;
   }
 
-  if (!data) return error.message || "Could not reach the server.";
-  if (typeof data === "string") return data;
+  if (typeof answerBody === "string") {
+    return answerBody;
+  }
 
-  const named = data.detail || data.error;
-  if (named) return named;
+  if (answerBody.detail) {
+    return answerBody.detail;
+  }
 
-  const first = Object.values(data)[0];
-  const message = Array.isArray(first) ? first[0] : first;
-  return message || `Request failed (${error.response.status})`;
+  if (answerBody.error) {
+    return answerBody.error;
+  }
+
+  const firstProblem = Object.values(answerBody)[0];
+
+  if (Array.isArray(firstProblem) && firstProblem.length > 0) {
+    return firstProblem[0];
+  }
+
+  if (firstProblem) {
+    return firstProblem;
+  }
+
+  return requestFailed;
 }
 
-client.interceptors.response.use(
-  response => response,
-  async error => {
-    const request = error.config;
-    const unauthorised = error.response?.status === 401;
+async function askServerForNewAccessToken() {
+  const refreshToken = getRefreshToken();
 
-    // An expired access token is the ordinary case, not a failure: swap it for
-    // a fresh one and run the request again. Only once, hence the flag — if the
-    // retry is rejected too, the session really is over.
-    if (unauthorised && request && request.useToken !== false && !request.retried) {
-      const renewed = await renewAccessToken();
-      if (!renewed) throw endSession(error);
+  if (!refreshToken) {
+    return null;
+  }
 
-      request.retried = true;
-      request.headers.Authorization = `Bearer ${renewed}`;
-      try {
-        return await client.request(request);
-      } catch (retryError) {
-        if (retryError.response?.status === 401) throw endSession(retryError);
-        throw new Error(messageFrom(retryError), { cause: retryError });
-      }
+  let answer;
+
+  try {
+    answer = await sendToServer("POST", "/token/refresh/", { refresh: refreshToken }, null);
+  } catch {
+    return null;
+  }
+
+  if (!answer.ok) {
+    return null;
+  }
+
+  const answerBody = await readAnswer(answer);
+
+  if (!answerBody?.access) {
+    return null;
+  }
+
+  saveNewAccessToken(answerBody.access);
+
+  return answerBody.access;
+}
+
+let newAccessTokenRequest = null;
+
+function getNewAccessTokenOnceForEveryone() {
+  if (!newAccessTokenRequest) {
+    newAccessTokenRequest = askServerForNewAccessToken().finally(() => {
+      newAccessTokenRequest = null;
+    });
+  }
+
+  return newAccessTokenRequest;
+}
+
+function logOutAndGoToLoginPage() {
+  forgetLoggedInUser();
+
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+
+  return new Error("Your session has ended. Please log in again.");
+}
+
+async function askServer(method, address, dataToSend, sendLoginToken = true) {
+  const accessToken = sendLoginToken ? getAccessToken() : null;
+
+  let answer = await sendToServer(method, address, dataToSend, accessToken);
+
+  const loginWasRejected = answer.status === 401;
+
+  if (loginWasRejected && sendLoginToken) {
+    const newAccessToken = await getNewAccessTokenOnceForEveryone();
+
+    if (!newAccessToken) {
+      throw logOutAndGoToLoginPage();
     }
 
-    if (unauthorised && request?.useToken !== false) throw endSession(error);
+    answer = await sendToServer(method, address, dataToSend, newAccessToken);
 
-    throw new Error(messageFrom(error), { cause: error });
-  },
-);
+    if (answer.status === 401) {
+      throw logOutAndGoToLoginPage();
+    }
+  }
 
-const send = async (method, url, data, useToken = true) =>
-  (await client.request({ method, url, data, useToken })).data;
+  const answerBody = await readAnswer(answer);
 
-export const login = (phone, password) => send("post", "/login/", { phone, password }, false);
-export const logout = (refresh) => send("post", "/logout/", { refresh });
-export const register = (account) => send("post", "/register/", account);
-export const getProfile = () => send("get", "/profile/");
-export const updateProfile = (data) => send("patch", "/profile/", data);
-export const changePassword = (data) => send("post", "/change-password/", data);
-export const requestPasswordReset = (email) => send("post", "/password-reset/", { email }, false);
-export const confirmPasswordReset = (data) => send("post", "/password-reset-confirm/", data, false);
+  if (!answer.ok) {
+    throw new Error(readableErrorMessage(answerBody, answer.status));
+  }
 
-const resources = {
+  return answerBody;
+}
+
+export function login(phone, password) {
+  return askServer("POST", "/login/", { phone, password }, false);
+}
+
+export function logout(refreshToken) {
+  return askServer("POST", "/logout/", { refresh: refreshToken });
+}
+
+export function register(newAccount) {
+  return askServer("POST", "/register/", newAccount);
+}
+
+export function getMyProfile() {
+  return askServer("GET", "/profile/");
+}
+
+export function updateMyProfile(details) {
+  return askServer("PATCH", "/profile/", details);
+}
+
+export function changeMyPassword(passwords) {
+  return askServer("POST", "/change-password/", passwords);
+}
+
+export function requestPasswordResetEmail(email) {
+  return askServer("POST", "/password-reset/", { email }, false);
+}
+
+export function setNewPasswordFromEmailLink(details) {
+  return askServer("POST", "/password-reset-confirm/", details, false);
+}
+
+const SERVER_ADDRESS_OF_EACH_LIST = {
   teachers: "/teacher/",
   students: "/student/",
   courses: "/course/",
@@ -129,7 +202,18 @@ const resources = {
   results: "/results/",
 };
 
-export const listResource = (resource) => send("get", resources[resource]);
-export const createResource = (resource, data) => send("post", resources[resource], data);
-export const updateResource = (resource, id, data) => send("patch", `${resources[resource]}${id}/`, data);
-export const deleteResource = (resource, id) => send("delete", `${resources[resource]}${id}/`);
+export function getList(listName) {
+  return askServer("GET", SERVER_ADDRESS_OF_EACH_LIST[listName]);
+}
+
+export function addToList(listName, newRecord) {
+  return askServer("POST", SERVER_ADDRESS_OF_EACH_LIST[listName], newRecord);
+}
+
+export function updateInList(listName, recordId, changes) {
+  return askServer("PATCH", `${SERVER_ADDRESS_OF_EACH_LIST[listName]}${recordId}/`, changes);
+}
+
+export function deleteFromList(listName, recordId) {
+  return askServer("DELETE", `${SERVER_ADDRESS_OF_EACH_LIST[listName]}${recordId}/`);
+}
