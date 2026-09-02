@@ -3,24 +3,28 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { studentsApi } from "../api.js";
 import { useAuth } from "../auth.js";
 import { canCreate, canWrite } from "../permissions.js";
+import useTableQuery from "../useTableQuery.js";
 import {
   Alert,
   Button,
   Checkbox,
   ConfirmDialog,
+  FilterBar,
   IconButton,
   Input,
   PageHeader,
+  Pagination,
+  Select,
   Table,
 } from "../components/index.js";
 
 // Read this page first. All eight resource pages are the same six steps:
 //   1. state for the rows, the form, and the errors
-//   2. useEffect()     reads the list from the API when the page opens
+//   2. useEffect()     reads one page of rows from the API
 //   3. reload()        re-runs that effect after a save or a delete
 //   4. handleSave()    creates a new row, or updates the one being edited
 //   5. askToDelete() / confirmDelete()  opens the dialog, then deletes
-//   6. the JSX: banners, form, table, confirm dialog
+//   6. the JSX: banners, form, filters, table, pages, confirm dialog
 export default function Students() {
   // 1. state
   const [students, setStudents] = useState([]);
@@ -29,6 +33,16 @@ export default function Students() {
   // A short "Saved" line. It stays until the reader closes it — see the
   // onDismiss passed to <Alert> in step 6.
   const [notice, setNotice] = useState("");
+
+  // How many students match the filters, and how many pages that is. Both
+  // come off the response: students.length only counts the page on screen.
+  const [count, setCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // The search box, the page number, the sort column and the filters. The
+  // server does the searching and sorting; this only holds what to ask for.
+  const query = useTableQuery({ ordering: "id" });
+  const { params: queryParams, stepBackAfter } = query;
 
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
@@ -58,22 +72,50 @@ export default function Students() {
     setReloadCount((count) => count + 1);
   }
 
-  // 2. read the list when the page opens. GET /api/student/ returns a plain
-  // array, not {count, results}, because this backend has no pagination.
+  // 2. read one page. GET /api/student/?page=2&search=... comes back as
+  // {count, page, page_size, total_pages, next, previous, results}.
   useEffect(() => {
+    // Typing in the search box fires a request per pause, and a slow one can
+    // land after a later, quicker one. This flag makes the page ignore the
+    // answer to a question it has stopped asking.
+    let isCurrent = true;
+
     async function load() {
+      setIsLoading(true);
+
       try {
-        setStudents(await studentsApi.list());
+        const body = await studentsApi.list(queryParams);
+        if (!isCurrent) {
+          return;
+        }
+        setStudents(body.results);
+        setCount(body.count);
+        setTotalPages(body.total_pages);
         setError("");
       } catch (problem) {
+        if (!isCurrent) {
+          return;
+        }
+        // Deleting the last row on the last page leaves the page number
+        // pointing past the end. stepBackAfter() moves back one and the
+        // effect runs again.
+        if (stepBackAfter(problem)) {
+          return;
+        }
         setError(problem.message);
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
 
     load();
-  }, [reloadCount]);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reloadCount, queryParams, stepBackAfter]);
 
   function openEmptyForm() {
     setName("");
@@ -238,7 +280,9 @@ export default function Students() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {isLoading ? "Loading..." : `${students.length} students`}
+            {isLoading
+              ? "Loading..."
+              : `${count} ${count === 1 ? "student" : "students"}`}
           </h2>
           {mayCreate && (
             <Button onClick={openEmptyForm}>
@@ -248,16 +292,66 @@ export default function Students() {
           )}
         </div>
 
+        <FilterBar
+          search={query.searchBox}
+          onSearchChange={query.setSearchBox}
+          placeholder="Name, email or roll number"
+          isFiltered={query.isFiltered}
+          onClear={query.clear}
+        >
+          <Select
+            label="Status"
+            className="min-w-40"
+            value={query.filters.is_active ?? ""}
+            onChange={(event) => query.setFilter("is_active", event.target.value)}
+          >
+            <option value="">Any status</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </Select>
+
+          {/* Two boxes rather than one, because "enrolled between" is two
+              separate comparisons on the same column. Either can stand on
+              its own: from with no to means "any time since". */}
+          <Input
+            label="Enrolled from"
+            type="date"
+            className="min-w-40"
+            value={query.filters.enrolled_from ?? ""}
+            onChange={(event) =>
+              query.setFilter("enrolled_from", event.target.value)
+            }
+          />
+
+          <Input
+            label="Enrolled to"
+            type="date"
+            className="min-w-40"
+            value={query.filters.enrolled_to ?? ""}
+            onChange={(event) =>
+              query.setFilter("enrolled_to", event.target.value)
+            }
+          />
+        </FilterBar>
+
         <Table
           columns={[
-            "ID",
-            "Name",
-            "Email",
-            "Roll no.",
-            "Enrolled",
-            "Active",
+            { label: "ID", field: "id" },
+            { label: "Name", field: "name" },
+            { label: "Email", field: "email" },
+            { label: "Roll no.", field: "roll_number" },
+            { label: "Enrolled", field: "enrollment_date" },
+            { label: "Active", field: "is_active" },
             "Action",
           ]}
+          ordering={query.ordering}
+          onSort={query.toggleSort}
+          isEmpty={!isLoading && students.length === 0}
+          emptyMessage={
+            query.isFiltered
+              ? "No student matches those filters."
+              : "No students yet."
+          }
         >
           {students.map((student) => (
             <tr
@@ -303,6 +397,15 @@ export default function Students() {
             </tr>
           ))}
         </Table>
+
+        <Pagination
+          page={query.page}
+          pageSize={query.pageSize}
+          count={count}
+          totalPages={totalPages}
+          onPageChange={query.setPage}
+          onPageSizeChange={query.setPageSize}
+        />
       </div>
 
       <ConfirmDialog

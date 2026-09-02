@@ -53,12 +53,16 @@ def field_behind(model, lookup):
     return field
 
 
-def coerce(field, raw, param):
+def coerce(field, lookup, raw, param):
     """Turn one query-string value into something the ORM can compare."""
     text = raw.strip()
 
     try:
-        if isinstance(field, models.BooleanField):
+        # __isnull takes a true/false whatever it is asked about, so it is
+        # settled on the lookup and not on the field. Without this, a lookup
+        # like "results__isnull" would be read as a relation and "true" would
+        # be parsed as an id.
+        if lookup.endswith("__isnull") or isinstance(field, models.BooleanField):
             low = text.lower()
             if low in TRUE_WORDS:
                 return True
@@ -103,7 +107,7 @@ class FieldFilterBackend(BaseFilterBackend):
                 continue
 
             field = field_behind(queryset.model, lookup)
-            conditions[lookup] = coerce(field, raw, param)
+            conditions[lookup] = coerce(field, lookup, raw, param)
 
         if not conditions:
             return queryset

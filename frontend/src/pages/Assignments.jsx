@@ -3,13 +3,16 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { assignmentsApi, coursesApi, lessonsApi } from "../api.js";
 import { useAuth } from "../auth.js";
 import { canCreate, canWrite } from "../permissions.js";
+import useTableQuery from "../useTableQuery.js";
 import {
   Alert,
   Button,
   ConfirmDialog,
+  FilterBar,
   IconButton,
   Input,
   PageHeader,
+  Pagination,
   Select,
   Table,
   Textarea,
@@ -42,6 +45,12 @@ export default function Assignments() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const [count, setCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const query = useTableQuery({ ordering: "id" });
+  const { params: queryParams, stepBackAfter } = query;
+
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
   const { user } = useAuth();
@@ -61,30 +70,20 @@ export default function Assignments() {
   const [formIsOpen, setFormIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(0);
 
-  function findCourseTitle(courseId) {
-    const course = courses.find((item) => item.id === courseId);
-    if (course) {
-      return course.title;
-    }
-    return "Unknown";
-  }
-
-  function findLessonTitle(lessonId) {
-    const lesson = lessons.find((item) => item.id === lessonId);
-    if (lesson) {
-      return lesson.title;
-    }
-    return "Unknown";
-  }
-
   // An assignment points at both a course and a lesson, so once a course is
   // chosen only that course's lessons are worth offering.
   const lessonsToOffer = courseId
     ? lessons.filter((lesson) => lesson.course === Number(courseId))
     : lessons;
 
-  // Bumping this re-runs the effect below. Saving and deleting call reload()
-  // so the table shows what the server now holds.
+  // The same narrowing for the filter bar, which has its own course dropdown.
+  const filterCourseId = query.filters.course ?? "";
+  const lessonsToFilterBy = filterCourseId
+    ? lessons.filter((lesson) => lesson.course === Number(filterCourseId))
+    : lessons;
+
+  // Bumping this re-runs both effects below. Saving and deleting call
+  // reload() so the table shows what the server now holds.
   const [reloadCount, setReloadCount] = useState(0);
 
   function reload() {
@@ -92,25 +91,60 @@ export default function Assignments() {
   }
 
   useEffect(() => {
+    let isCurrent = true;
+
     async function load() {
+      setIsLoading(true);
+
       try {
-        const [assignmentRows, courseRows, lessonRows] = await Promise.all([
-          assignmentsApi.list(),
-          coursesApi.list(),
-          lessonsApi.list(),
-        ]);
-        setAssignments(assignmentRows);
-        setCourses(courseRows);
-        setLessons(lessonRows);
+        const body = await assignmentsApi.list(queryParams);
+        if (!isCurrent) {
+          return;
+        }
+        setAssignments(body.results);
+        setCount(body.count);
+        setTotalPages(body.total_pages);
         setError("");
       } catch (problem) {
+        if (!isCurrent) {
+          return;
+        }
+        if (stepBackAfter(problem)) {
+          return;
+        }
         setError(problem.message);
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
 
     load();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reloadCount, queryParams, stepBackAfter]);
+
+  // Courses and lessons in full, for the dropdowns in the form and the filter
+  // bar, and to narrow the lesson list to one course. The titles in the table
+  // come off each row, so nothing is joined here.
+  useEffect(() => {
+    async function loadLookups() {
+      try {
+        const [courseRows, lessonRows] = await Promise.all([
+          coursesApi.listAll({ ordering: "title" }),
+          lessonsApi.listAll({ ordering: "title" }),
+        ]);
+        setCourses(courseRows);
+        setLessons(lessonRows);
+      } catch (problem) {
+        setError(problem.message);
+      }
+    }
+
+    loadLookups();
   }, [reloadCount]);
 
   function openEmptyForm() {
@@ -141,6 +175,19 @@ export default function Assignments() {
     if (lesson && lesson.course !== Number(nextCourseId)) {
       setLessonId("");
     }
+  }
+
+  // The same again for the filter bar: narrowing to a course would otherwise
+  // leave a lesson filter in place that no row can satisfy, and the table
+  // would go empty for no visible reason.
+  function handleCourseFilterChange(nextCourseId) {
+    const lesson = lessons.find(
+      (item) => item.id === Number(query.filters.lesson),
+    );
+    if (lesson && lesson.course !== Number(nextCourseId)) {
+      query.setFilter("lesson", "");
+    }
+    query.setFilter("course", nextCourseId);
   }
 
   function closeForm() {
@@ -306,7 +353,9 @@ export default function Assignments() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {isLoading ? "Loading..." : `${assignments.length} assignments`}
+            {isLoading
+              ? "Loading..."
+              : `${count} ${count === 1 ? "assignment" : "assignments"}`}
           </h2>
           {mayCreate && (
             <Button onClick={openEmptyForm}>
@@ -316,7 +365,78 @@ export default function Assignments() {
           )}
         </div>
 
-        <Table columns={["ID", "Title", "Course", "Lesson", "Due", "Action"]}>
+        <FilterBar
+          search={query.searchBox}
+          onSearchChange={query.setSearchBox}
+          placeholder="Title, description, course or lesson"
+          isFiltered={query.isFiltered}
+          onClear={query.clear}
+        >
+          <Select
+            label="Course"
+            className="min-w-44"
+            value={filterCourseId}
+            onChange={(event) => handleCourseFilterChange(event.target.value)}
+          >
+            <option value="">Any course</option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.title}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            label="Lesson"
+            className="min-w-44"
+            value={query.filters.lesson ?? ""}
+            onChange={(event) => query.setFilter("lesson", event.target.value)}
+          >
+            <option value="">Any lesson</option>
+            {lessonsToFilterBy.map((lesson) => (
+              <option key={lesson.id} value={lesson.id}>
+                {lesson.title}
+              </option>
+            ))}
+          </Select>
+
+          {/* Due dates carry a time, but picking one to the minute is not how
+              anyone thinks about "due this week", so these are plain dates. */}
+          <Input
+            label="Due from"
+            type="date"
+            className="min-w-40"
+            value={query.filters.due_from ?? ""}
+            onChange={(event) => query.setFilter("due_from", event.target.value)}
+          />
+
+          <Input
+            label="Due to"
+            type="date"
+            className="min-w-40"
+            value={query.filters.due_to ?? ""}
+            onChange={(event) => query.setFilter("due_to", event.target.value)}
+          />
+        </FilterBar>
+
+        <Table
+          columns={[
+            { label: "ID", field: "id" },
+            { label: "Title", field: "title" },
+            { label: "Course", field: "course__title" },
+            { label: "Lesson", field: "lesson__title" },
+            { label: "Due", field: "due_date" },
+            "Action",
+          ]}
+          ordering={query.ordering}
+          onSort={query.toggleSort}
+          isEmpty={!isLoading && assignments.length === 0}
+          emptyMessage={
+            query.isFiltered
+              ? "No assignment matches those filters."
+              : "No assignments yet."
+          }
+        >
           {assignments.map((assignment) => (
             <tr
               key={assignment.id}
@@ -325,10 +445,10 @@ export default function Assignments() {
               <td className="px-3 py-2 text-slate-700">{assignment.id}</td>
               <td className="px-3 py-2 text-slate-700">{assignment.title}</td>
               <td className="px-3 py-2 text-slate-700">
-                {findCourseTitle(assignment.course)}
+                {assignment.course_title}
               </td>
               <td className="px-3 py-2 text-slate-700">
-                {findLessonTitle(assignment.lesson)}
+                {assignment.lesson_title}
               </td>
               <td className="px-3 py-2 text-slate-700">
                 {showDateAndTime(assignment.due_date)}
@@ -360,6 +480,15 @@ export default function Assignments() {
             </tr>
           ))}
         </Table>
+
+        <Pagination
+          page={query.page}
+          pageSize={query.pageSize}
+          count={count}
+          totalPages={totalPages}
+          onPageChange={query.setPage}
+          onPageSizeChange={query.setPageSize}
+        />
       </div>
 
       <ConfirmDialog

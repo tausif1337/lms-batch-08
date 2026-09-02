@@ -8,13 +8,16 @@ import {
 } from "../api.js";
 import { useAuth } from "../auth.js";
 import { canCreate, canWrite } from "../permissions.js";
+import useTableQuery from "../useTableQuery.js";
 import {
   Alert,
   Button,
   ConfirmDialog,
+  FilterBar,
   IconButton,
   Input,
   PageHeader,
+  Pagination,
   Select,
   Table,
   Textarea,
@@ -32,12 +35,23 @@ function shorten(text) {
 
 export default function Results() {
   const [results, setResults] = useState([]);
-  const [submissions, setSubmissions] = useState([]);
   const [students, setStudents] = useState([]);
   const [assignments, setAssignments] = useState([]);
+
+  // The submissions offered in the "new result" dropdown, and how many there
+  // are in total. Only the ungraded ones, and only the first pageful: see the
+  // effect that loads them.
+  const [ungraded, setUngraded] = useState([]);
+  const [ungradedCount, setUngradedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  const [count, setCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const query = useTableQuery({ ordering: "id" });
+  const { params: queryParams, stepBackAfter } = query;
 
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
@@ -56,37 +70,21 @@ export default function Results() {
   const [formIsOpen, setFormIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(0);
 
-  // "Submission #4" on its own says nothing useful, so the student and the
-  // assignment are looked up and folded into the label.
-  function describeSubmission(submissionId) {
-    const submission = submissions.find((item) => item.id === submissionId);
-    if (!submission) {
-      return `Submission #${submissionId}`;
-    }
-
-    const student = students.find((item) => item.id === submission.student);
-    const assignment = assignments.find(
-      (item) => item.id === submission.assignment,
-    );
-
-    const who = student ? student.name : "Unknown student";
-    const what = assignment ? assignment.title : "Unknown assignment";
-    return `#${submission.id} — ${who}, ${what}`;
+  // "Submission #4" on its own says nothing useful, so the label carries the
+  // student and the assignment. Both a result row and a submission row are
+  // sent with those names on them, so this is a format and not a lookup.
+  function describe(row, submissionId) {
+    const who = row?.student_name ?? "Unknown student";
+    const what = row?.assignment_title ?? "Unknown assignment";
+    return `#${submissionId} — ${who}, ${what}`;
   }
 
-  // Results.submission is one-to-one: a submission can only be graded once,
-  // and a second attempt comes back as a 400. Already-graded submissions are
-  // left out of the "new result" dropdown so that is hard to walk into.
-  const gradedIds = results
-    .filter((result) => result.id !== editingId)
-    .map((result) => result.submission);
+  // The submission being edited is already graded, so it is not in the
+  // ungraded list — and without this its own row would show as blank.
+  const editingRow = results.find((result) => result.id === editingId);
 
-  const submissionsToOffer = submissions.filter(
-    (submission) => !gradedIds.includes(submission.id),
-  );
-
-  // Bumping this re-runs the effect below. Saving and deleting call reload()
-  // so the table shows what the server now holds.
+  // Bumping this re-runs both effects below. Saving and deleting call
+  // reload() so the table shows what the server now holds.
   const [reloadCount, setReloadCount] = useState(0);
 
   function reload() {
@@ -94,28 +92,74 @@ export default function Results() {
   }
 
   useEffect(() => {
+    let isCurrent = true;
+
     async function load() {
+      setIsLoading(true);
+
       try {
-        const [resultRows, submissionRows, studentRows, assignmentRows] =
-          await Promise.all([
-            resultsApi.list(),
-            submissionsApi.list(),
-            studentsApi.list(),
-            assignmentsApi.list(),
-          ]);
-        setResults(resultRows);
-        setSubmissions(submissionRows);
-        setStudents(studentRows);
-        setAssignments(assignmentRows);
+        const body = await resultsApi.list(queryParams);
+        if (!isCurrent) {
+          return;
+        }
+        setResults(body.results);
+        setCount(body.count);
+        setTotalPages(body.total_pages);
         setError("");
       } catch (problem) {
+        if (!isCurrent) {
+          return;
+        }
+        if (stepBackAfter(problem)) {
+          return;
+        }
         setError(problem.message);
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
 
     load();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reloadCount, queryParams, stepBackAfter]);
+
+  // Results.submission is one-to-one: a submission can only be graded once,
+  // and a second attempt comes back as a 400. So the dropdown is built from
+  // ?ungraded=true, which is the server answering "no result attached yet"
+  // from the database.
+  //
+  // Only the first pageful of those. There are thousands of submissions here
+  // and a <select> is no way to hunt through them; the count below the box
+  // says how many are waiting, and grading one brings the next into view.
+  const UNGRADED_TO_OFFER = 200;
+
+  useEffect(() => {
+    async function loadLookups() {
+      try {
+        const [ungradedPage, studentRows, assignmentRows] = await Promise.all([
+          submissionsApi.list({
+            ungraded: "true",
+            ordering: "submitted_at",
+            page_size: UNGRADED_TO_OFFER,
+          }),
+          studentsApi.listAll({ ordering: "name" }),
+          assignmentsApi.listAll({ ordering: "title" }),
+        ]);
+        setUngraded(ungradedPage.results);
+        setUngradedCount(ungradedPage.count);
+        setStudents(studentRows);
+        setAssignments(assignmentRows);
+      } catch (problem) {
+        setError(problem.message);
+      }
+    }
+
+    loadLookups();
   }, [reloadCount]);
 
   function openEmptyForm() {
@@ -236,9 +280,17 @@ export default function Results() {
               value={submissionId}
               onChange={(event) => setSubmissionId(event.target.value)}
             >
-              {submissionsToOffer.map((submission) => (
+              {/* The row being edited first, since it is not on the
+                  ungraded list and would otherwise show as blank. */}
+              {editingRow && (
+                <option value={editingRow.submission}>
+                  {describe(editingRow, editingRow.submission)}
+                </option>
+              )}
+
+              {ungraded.map((submission) => (
                 <option key={submission.id} value={submission.id}>
-                  {describeSubmission(submission.id)}
+                  {describe(submission, submission.id)}
                 </option>
               ))}
             </Select>
@@ -252,6 +304,14 @@ export default function Results() {
               onChange={(event) => setScore(event.target.value)}
             />
           </div>
+
+          {ungradedCount > UNGRADED_TO_OFFER && (
+            <p className="mt-2 text-sm text-slate-500">
+              Showing the {UNGRADED_TO_OFFER} longest-waiting of{" "}
+              {ungradedCount} ungraded submissions. Grade these and the rest
+              move up.
+            </p>
+          )}
 
           <Textarea
             label="Feedback"
@@ -275,7 +335,9 @@ export default function Results() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {isLoading ? "Loading..." : `${results.length} results`}
+            {isLoading
+              ? "Loading..."
+              : `${count} ${count === 1 ? "result" : "results"}`}
           </h2>
           {mayCreate && (
             <Button onClick={openEmptyForm}>
@@ -285,7 +347,81 @@ export default function Results() {
           )}
         </div>
 
-        <Table columns={["ID", "Submission", "Score", "Feedback", "Action"]}>
+        <FilterBar
+          search={query.searchBox}
+          onSearchChange={query.setSearchBox}
+          placeholder="Feedback, student or assignment"
+          isFiltered={query.isFiltered}
+          onClear={query.clear}
+        >
+          <Select
+            label="Student"
+            className="min-w-44"
+            value={query.filters.student ?? ""}
+            onChange={(event) => query.setFilter("student", event.target.value)}
+          >
+            <option value="">Any student</option>
+            {students.map((student) => (
+              <option key={student.id} value={student.id}>
+                {student.name}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            label="Assignment"
+            className="min-w-44"
+            value={query.filters.assignment ?? ""}
+            onChange={(event) =>
+              query.setFilter("assignment", event.target.value)
+            }
+          >
+            <option value="">Any assignment</option>
+            {assignments.map((assignment) => (
+              <option key={assignment.id} value={assignment.id}>
+                {assignment.title}
+              </option>
+            ))}
+          </Select>
+
+          {/* "Everyone who scored under 40" is the question behind these two,
+              so they are a pair the same way the date ranges are. */}
+          <Input
+            label="Score from"
+            type="number"
+            step="0.01"
+            className="min-w-32"
+            value={query.filters.score_min ?? ""}
+            onChange={(event) => query.setFilter("score_min", event.target.value)}
+          />
+
+          <Input
+            label="Score to"
+            type="number"
+            step="0.01"
+            className="min-w-32"
+            value={query.filters.score_max ?? ""}
+            onChange={(event) => query.setFilter("score_max", event.target.value)}
+          />
+        </FilterBar>
+
+        <Table
+          columns={[
+            { label: "ID", field: "id" },
+            { label: "Submission", field: "submission__student__name" },
+            { label: "Score", field: "score" },
+            "Feedback",
+            "Action",
+          ]}
+          ordering={query.ordering}
+          onSort={query.toggleSort}
+          isEmpty={!isLoading && results.length === 0}
+          emptyMessage={
+            query.isFiltered
+              ? "No result matches those filters."
+              : "Nothing graded yet."
+          }
+        >
           {results.map((result) => (
             <tr
               key={result.id}
@@ -293,7 +429,7 @@ export default function Results() {
             >
               <td className="px-3 py-2 text-slate-700">{result.id}</td>
               <td className="px-3 py-2 text-slate-700">
-                {describeSubmission(result.submission)}
+                {describe(result, result.submission)}
               </td>
               <td className="px-3 py-2 text-slate-700">{result.score}</td>
               <td className="px-3 py-2 text-slate-700">
@@ -326,6 +462,15 @@ export default function Results() {
             </tr>
           ))}
         </Table>
+
+        <Pagination
+          page={query.page}
+          pageSize={query.pageSize}
+          count={count}
+          totalPages={totalPages}
+          onPageChange={query.setPage}
+          onPageSizeChange={query.setPageSize}
+        />
       </div>
 
       <ConfirmDialog
@@ -333,7 +478,7 @@ export default function Results() {
         title="Delete result"
         message={
           resultToDelete
-            ? `Delete the result for ${describeSubmission(resultToDelete.submission)}? The submission can then be graded again. This cannot be undone.`
+            ? `Delete the result for ${describe(resultToDelete, resultToDelete.submission)}? The submission can then be graded again. This cannot be undone.`
             : ""
         }
         isWorking={isDeleting}

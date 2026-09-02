@@ -3,12 +3,16 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { coursesApi, enrollmentsApi, studentsApi } from "../api.js";
 import { useAuth } from "../auth.js";
 import { canCreate, canWrite } from "../permissions.js";
+import useTableQuery from "../useTableQuery.js";
 import {
   Alert,
   Button,
   ConfirmDialog,
+  FilterBar,
   IconButton,
+  Input,
   PageHeader,
+  Pagination,
   Select,
   Table,
 } from "../components/index.js";
@@ -20,6 +24,12 @@ export default function Enrollments() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  const [count, setCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const query = useTableQuery({ ordering: "id" });
+  const { params: queryParams, stepBackAfter } = query;
 
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
@@ -37,51 +47,72 @@ export default function Enrollments() {
   const [formIsOpen, setFormIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(0);
 
-  function findStudentName(studentId) {
-    const student = students.find((item) => item.id === studentId);
-    if (student) {
-      return student.name;
-    }
-    return "Unknown";
-  }
-
-  function findCourseTitle(courseId) {
-    const course = courses.find((item) => item.id === courseId);
-    if (course) {
-      return course.title;
-    }
-    return "Unknown";
-  }
-
-  // Bumping this re-runs the effect below. Saving and deleting call reload()
-  // so the table shows what the server now holds.
+  // Bumping this re-runs both effects below. Saving and deleting call
+  // reload() so the table shows what the server now holds.
   const [reloadCount, setReloadCount] = useState(0);
 
   function reload() {
     setReloadCount((count) => count + 1);
   }
 
-  // Three endpoints, because the enrollment rows only carry ids.
+  // One page of enrollments. ?search= reaches the student's name and the
+  // course title through the relations, so searching "algebra" works even
+  // though an enrollment row carries only ids.
   useEffect(() => {
+    let isCurrent = true;
+
     async function load() {
+      setIsLoading(true);
+
       try {
-        const [enrollmentRows, studentRows, courseRows] = await Promise.all([
-          enrollmentsApi.list(),
-          studentsApi.list(),
-          coursesApi.list(),
-        ]);
-        setEnrollments(enrollmentRows);
-        setStudents(studentRows);
-        setCourses(courseRows);
+        const body = await enrollmentsApi.list(queryParams);
+        if (!isCurrent) {
+          return;
+        }
+        setEnrollments(body.results);
+        setCount(body.count);
+        setTotalPages(body.total_pages);
         setError("");
       } catch (problem) {
+        if (!isCurrent) {
+          return;
+        }
+        if (stepBackAfter(problem)) {
+          return;
+        }
         setError(problem.message);
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
 
     load();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reloadCount, queryParams, stepBackAfter]);
+
+  // Students and courses in full, for the dropdowns in the form and the
+  // filter bar. The names in the table come off each row as `student_name`
+  // and `course_title`, so nothing is joined here.
+  useEffect(() => {
+    async function loadLookups() {
+      try {
+        const [studentRows, courseRows] = await Promise.all([
+          studentsApi.listAll({ ordering: "name" }),
+          coursesApi.listAll({ ordering: "title" }),
+        ]);
+        setStudents(studentRows);
+        setCourses(courseRows);
+      } catch (problem) {
+        setError(problem.message);
+      }
+    }
+
+    loadLookups();
   }, [reloadCount]);
 
   function openEmptyForm() {
@@ -228,7 +259,9 @@ export default function Enrollments() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {isLoading ? "Loading..." : `${enrollments.length} enrollments`}
+            {isLoading
+              ? "Loading..."
+              : `${count} ${count === 1 ? "enrollment" : "enrollments"}`}
           </h2>
           {mayCreate && (
             <Button onClick={openEmptyForm}>
@@ -238,7 +271,79 @@ export default function Enrollments() {
           )}
         </div>
 
-        <Table columns={["ID", "Student", "Course", "Enrolled", "Action"]}>
+        <FilterBar
+          search={query.searchBox}
+          onSearchChange={query.setSearchBox}
+          placeholder="Student, roll number or course"
+          isFiltered={query.isFiltered}
+          onClear={query.clear}
+        >
+          <Select
+            label="Student"
+            className="min-w-44"
+            value={query.filters.student ?? ""}
+            onChange={(event) => query.setFilter("student", event.target.value)}
+          >
+            <option value="">Any student</option>
+            {students.map((student) => (
+              <option key={student.id} value={student.id}>
+                {student.name}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            label="Course"
+            className="min-w-44"
+            value={query.filters.course ?? ""}
+            onChange={(event) => query.setFilter("course", event.target.value)}
+          >
+            <option value="">Any course</option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.title}
+              </option>
+            ))}
+          </Select>
+
+          <Input
+            label="Enrolled from"
+            type="date"
+            className="min-w-40"
+            value={query.filters.enrolled_from ?? ""}
+            onChange={(event) =>
+              query.setFilter("enrolled_from", event.target.value)
+            }
+          />
+
+          <Input
+            label="Enrolled to"
+            type="date"
+            className="min-w-40"
+            value={query.filters.enrolled_to ?? ""}
+            onChange={(event) =>
+              query.setFilter("enrolled_to", event.target.value)
+            }
+          />
+        </FilterBar>
+
+        <Table
+          columns={[
+            { label: "ID", field: "id" },
+            { label: "Student", field: "student__name" },
+            { label: "Course", field: "course__title" },
+            { label: "Enrolled", field: "enrollment_date" },
+            "Action",
+          ]}
+          ordering={query.ordering}
+          onSort={query.toggleSort}
+          isEmpty={!isLoading && enrollments.length === 0}
+          emptyMessage={
+            query.isFiltered
+              ? "No enrollment matches those filters."
+              : "No enrollments yet."
+          }
+        >
           {enrollments.map((enrollment) => (
             <tr
               key={enrollment.id}
@@ -246,10 +351,10 @@ export default function Enrollments() {
             >
               <td className="px-3 py-2 text-slate-700">{enrollment.id}</td>
               <td className="px-3 py-2 text-slate-700">
-                {findStudentName(enrollment.student)}
+                {enrollment.student_name}
               </td>
               <td className="px-3 py-2 text-slate-700">
-                {findCourseTitle(enrollment.course)}
+                {enrollment.course_title}
               </td>
               <td className="px-3 py-2 text-slate-700">
                 {enrollment.enrollment_date}
@@ -281,6 +386,15 @@ export default function Enrollments() {
             </tr>
           ))}
         </Table>
+
+        <Pagination
+          page={query.page}
+          pageSize={query.pageSize}
+          count={count}
+          totalPages={totalPages}
+          onPageChange={query.setPage}
+          onPageSizeChange={query.setPageSize}
+        />
       </div>
 
       <ConfirmDialog
@@ -288,7 +402,7 @@ export default function Enrollments() {
         title="Delete enrollment"
         message={
           enrollmentToDelete
-            ? `Take ${findStudentName(enrollmentToDelete.student)} off ${findCourseTitle(enrollmentToDelete.course)}? This cannot be undone.`
+            ? `Take ${enrollmentToDelete.student_name} off ${enrollmentToDelete.course_title}? This cannot be undone.`
             : ""
         }
         isWorking={isDeleting}

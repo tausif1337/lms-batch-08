@@ -373,6 +373,12 @@ class SubmissionListCreateView(generics.ListCreateAPIView):
         "course": "assignment__course",
         "submitted_from": "submitted_at__gte",
         "submitted_to": "submitted_at__lte",
+        # ?ungraded=true is the list the "new result" dropdown is built from.
+        # Results.submission is one-to-one, so a submission with no result
+        # attached is one nobody has marked yet. Asking the database that is
+        # far cheaper than sending every submission and every result to the
+        # browser for it to work out the difference.
+        "ungraded": "results__isnull",
     }
     ordering_fields = ["id", "submitted_at", "student__name", "assignment__title"]
     ordering = ["id"]

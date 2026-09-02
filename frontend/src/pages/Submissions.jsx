@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { assignmentsApi, studentsApi, submissionsApi } from "../api.js";
+import {
+  assignmentsApi,
+  coursesApi,
+  studentsApi,
+  submissionsApi,
+} from "../api.js";
 import { useAuth } from "../auth.js";
 import { canCreate, canWrite } from "../permissions.js";
+import useTableQuery from "../useTableQuery.js";
 import {
   Alert,
   Button,
   ConfirmDialog,
+  FilterBar,
   IconButton,
+  Input,
   PageHeader,
+  Pagination,
   Select,
   Table,
   Textarea,
@@ -35,9 +44,16 @@ export default function Submissions() {
   const [submissions, setSubmissions] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [students, setStudents] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  const [count, setCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const query = useTableQuery({ ordering: "id" });
+  const { params: queryParams, stepBackAfter } = query;
 
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
@@ -56,24 +72,18 @@ export default function Submissions() {
   const [formIsOpen, setFormIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(0);
 
-  function findAssignmentTitle(assignmentId) {
-    const assignment = assignments.find((item) => item.id === assignmentId);
-    if (assignment) {
-      return assignment.title;
-    }
-    return "Unknown";
-  }
+  // Picking a course in the filter bar narrows the assignment dropdown next
+  // to it, because the full list of assignments is long and only one course's
+  // worth of it can match.
+  const filterCourseId = query.filters.course ?? "";
+  const assignmentsToFilterBy = filterCourseId
+    ? assignments.filter(
+        (assignment) => assignment.course === Number(filterCourseId),
+      )
+    : assignments;
 
-  function findStudentName(studentId) {
-    const student = students.find((item) => item.id === studentId);
-    if (student) {
-      return student.name;
-    }
-    return "Unknown";
-  }
-
-  // Bumping this re-runs the effect below. Saving and deleting call reload()
-  // so the table shows what the server now holds.
+  // Bumping this re-runs both effects below. Saving and deleting call
+  // reload() so the table shows what the server now holds.
   const [reloadCount, setReloadCount] = useState(0);
 
   function reload() {
@@ -81,26 +91,62 @@ export default function Submissions() {
   }
 
   useEffect(() => {
+    let isCurrent = true;
+
     async function load() {
+      setIsLoading(true);
+
       try {
-        const [submissionRows, assignmentRows, studentRows] =
-          await Promise.all([
-            submissionsApi.list(),
-            assignmentsApi.list(),
-            studentsApi.list(),
-          ]);
-        setSubmissions(submissionRows);
-        setAssignments(assignmentRows);
-        setStudents(studentRows);
+        const body = await submissionsApi.list(queryParams);
+        if (!isCurrent) {
+          return;
+        }
+        setSubmissions(body.results);
+        setCount(body.count);
+        setTotalPages(body.total_pages);
         setError("");
       } catch (problem) {
+        if (!isCurrent) {
+          return;
+        }
+        if (stepBackAfter(problem)) {
+          return;
+        }
         setError(problem.message);
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
 
     load();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reloadCount, queryParams, stepBackAfter]);
+
+  // The three lists behind the dropdowns in the form and the filter bar. The
+  // names in the table come off each row as `student_name` and
+  // `assignment_title`, so nothing is joined here.
+  useEffect(() => {
+    async function loadLookups() {
+      try {
+        const [assignmentRows, studentRows, courseRows] = await Promise.all([
+          assignmentsApi.listAll({ ordering: "title" }),
+          studentsApi.listAll({ ordering: "name" }),
+          coursesApi.listAll({ ordering: "title" }),
+        ]);
+        setAssignments(assignmentRows);
+        setStudents(studentRows);
+        setCourses(courseRows);
+      } catch (problem) {
+        setError(problem.message);
+      }
+    }
+
+    loadLookups();
   }, [reloadCount]);
 
   function openEmptyForm() {
@@ -121,6 +167,19 @@ export default function Submissions() {
 
   function closeForm() {
     setFormIsOpen(false);
+  }
+
+  // Narrowing the course filter can strip the meaning out of the assignment
+  // filter sitting next to it, so an assignment from another course is
+  // cleared rather than left to empty the table silently.
+  function handleCourseFilterChange(nextCourseId) {
+    const assignment = assignments.find(
+      (item) => item.id === Number(query.filters.assignment),
+    );
+    if (assignment && assignment.course !== Number(nextCourseId)) {
+      query.setFilter("assignment", "");
+    }
+    query.setFilter("course", nextCourseId);
   }
 
   async function handleSave(event) {
@@ -259,7 +318,9 @@ export default function Submissions() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {isLoading ? "Loading..." : `${submissions.length} submissions`}
+            {isLoading
+              ? "Loading..."
+              : `${count} ${count === 1 ? "submission" : "submissions"}`}
           </h2>
           {mayCreate && (
             <Button onClick={openEmptyForm}>
@@ -269,15 +330,95 @@ export default function Submissions() {
           )}
         </div>
 
+        <FilterBar
+          search={query.searchBox}
+          onSearchChange={query.setSearchBox}
+          placeholder="Content, student or assignment"
+          isFiltered={query.isFiltered}
+          onClear={query.clear}
+        >
+          <Select
+            label="Course"
+            className="min-w-44"
+            value={filterCourseId}
+            onChange={(event) => handleCourseFilterChange(event.target.value)}
+          >
+            <option value="">Any course</option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.title}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            label="Assignment"
+            className="min-w-44"
+            value={query.filters.assignment ?? ""}
+            onChange={(event) =>
+              query.setFilter("assignment", event.target.value)
+            }
+          >
+            <option value="">Any assignment</option>
+            {assignmentsToFilterBy.map((assignment) => (
+              <option key={assignment.id} value={assignment.id}>
+                {assignment.title}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            label="Student"
+            className="min-w-44"
+            value={query.filters.student ?? ""}
+            onChange={(event) => query.setFilter("student", event.target.value)}
+          >
+            <option value="">Any student</option>
+            {students.map((student) => (
+              <option key={student.id} value={student.id}>
+                {student.name}
+              </option>
+            ))}
+          </Select>
+
+          <Input
+            label="Handed in from"
+            type="date"
+            className="min-w-40"
+            value={query.filters.submitted_from ?? ""}
+            onChange={(event) =>
+              query.setFilter("submitted_from", event.target.value)
+            }
+          />
+
+          <Input
+            label="Handed in to"
+            type="date"
+            className="min-w-40"
+            value={query.filters.submitted_to ?? ""}
+            onChange={(event) =>
+              query.setFilter("submitted_to", event.target.value)
+            }
+          />
+        </FilterBar>
+
         <Table
           columns={[
-            "ID",
-            "Assignment",
-            "Student",
+            { label: "ID", field: "id" },
+            { label: "Assignment", field: "assignment__title" },
+            { label: "Student", field: "student__name" },
             "Content",
-            "Submitted",
+            { label: "Submitted", field: "submitted_at" },
             "Action",
           ]}
+          ordering={query.ordering}
+          onSort={query.toggleSort}
+          isEmpty={!isLoading && submissions.length === 0}
+          emptyMessage={
+            query.isFiltered
+              ? "No submission matches those filters."
+              : "Nothing handed in yet."
+          }
         >
           {submissions.map((submission) => (
             <tr
@@ -286,10 +427,10 @@ export default function Submissions() {
             >
               <td className="px-3 py-2 text-slate-700">{submission.id}</td>
               <td className="px-3 py-2 text-slate-700">
-                {findAssignmentTitle(submission.assignment)}
+                {submission.assignment_title}
               </td>
               <td className="px-3 py-2 text-slate-700">
-                {findStudentName(submission.student)}
+                {submission.student_name}
               </td>
               <td className="px-3 py-2 text-slate-700">
                 {shorten(submission.content)}
@@ -324,6 +465,15 @@ export default function Submissions() {
             </tr>
           ))}
         </Table>
+
+        <Pagination
+          page={query.page}
+          pageSize={query.pageSize}
+          count={count}
+          totalPages={totalPages}
+          onPageChange={query.setPage}
+          onPageSizeChange={query.setPageSize}
+        />
       </div>
 
       <ConfirmDialog
@@ -331,7 +481,7 @@ export default function Submissions() {
         title="Delete submission"
         message={
           submissionToDelete
-            ? `Delete ${findStudentName(submissionToDelete.student)}'s work on ${findAssignmentTitle(submissionToDelete.assignment)}? Its result goes too. This cannot be undone.`
+            ? `Delete ${submissionToDelete.student_name}'s work on ${submissionToDelete.assignment_title}? Its result goes too. This cannot be undone.`
             : ""
         }
         isWorking={isDeleting}

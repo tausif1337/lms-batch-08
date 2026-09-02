@@ -202,6 +202,17 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 
+# The rows below carry the id of whatever they point at — a course sends
+# {"teacher": 3} — and the table wants to show a name. Each serializer that
+# has a foreign key therefore also sends the name behind it, read-only.
+#
+# The alternative was for the browser to download every teacher, every course
+# and every student and do the join itself. That worked while the lists came
+# back whole, but a page of ten rows should not cost eight thousand, and a
+# lookup list that is itself paginated cannot answer for a row on page 40.
+# The joins are already in the queryset via select_related, so the names cost
+# nothing extra to send.
+
 class TeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
@@ -212,28 +223,64 @@ class StudentSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'email', 'enrollment_date', 'is_active', 'roll_number']
 
 class CourseSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.name', read_only=True)
+
     class Meta:
         model = Course
-        fields = ['id', 'title', 'description', 'teacher']
+        fields = ['id', 'title', 'description', 'teacher', 'teacher_name']
 
 class EnrollmentSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    course_title = serializers.CharField(source='course.title', read_only=True)
+
     class Meta:
         model = Enrollment
-        fields = ['id', 'student', 'course', 'enrollment_date']
+        fields = [
+            'id', 'student', 'course', 'enrollment_date',
+            'student_name', 'course_title',
+        ]
 
 class LessonSerializer(serializers.ModelSerializer):
+    course_title = serializers.CharField(source='course.title', read_only=True)
+
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'description', 'course']
+        fields = ['id', 'title', 'description', 'course', 'course_title']
 class AssignmentSerializer(serializers.ModelSerializer):
+    course_title = serializers.CharField(source='course.title', read_only=True)
+    lesson_title = serializers.CharField(source='lesson.title', read_only=True)
+
     class Meta:
         model = Assignment
-        fields = ['id', 'title', 'description', 'lesson', 'due_date', 'course']
+        fields = [
+            'id', 'title', 'description', 'lesson', 'due_date', 'course',
+            'course_title', 'lesson_title',
+        ]
 class SubmissionSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.name', read_only=True)
+    assignment_title = serializers.CharField(
+        source='assignment.title', read_only=True,
+    )
+
     class Meta:
         model = Submission
-        fields = ['id', 'assignment', 'student', 'submitted_at', 'content']
+        fields = [
+            'id', 'assignment', 'student', 'submitted_at', 'content',
+            'student_name', 'assignment_title',
+        ]
 class ResultSerializer(serializers.ModelSerializer):
+    # Two relations deep: a result points at a submission, which points at the
+    # student and the assignment. "Submission #4" on its own says nothing.
+    student_name = serializers.CharField(
+        source='submission.student.name', read_only=True,
+    )
+    assignment_title = serializers.CharField(
+        source='submission.assignment.title', read_only=True,
+    )
+
     class Meta:
         model = Results
-        fields = ['id', 'submission', 'score', 'feedback']
+        fields = [
+            'id', 'submission', 'score', 'feedback',
+            'student_name', 'assignment_title',
+        ]

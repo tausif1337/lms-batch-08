@@ -3,13 +3,16 @@ import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { coursesApi, teachersApi } from "../api.js";
 import { useAuth } from "../auth.js";
 import { canCreate, canWrite } from "../permissions.js";
+import useTableQuery from "../useTableQuery.js";
 import {
   Alert,
   Button,
   ConfirmDialog,
+  FilterBar,
   IconButton,
   Input,
   PageHeader,
+  Pagination,
   Select,
   Table,
   Textarea,
@@ -21,6 +24,12 @@ export default function Courses() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  const [count, setCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const query = useTableQuery({ ordering: "id" });
+  const { params: queryParams, stepBackAfter } = query;
 
   // The server enforces this too. Hiding the buttons just keeps the page
   // honest about what will actually work.
@@ -39,43 +48,67 @@ export default function Courses() {
   const [formIsOpen, setFormIsOpen] = useState(false);
   const [editingId, setEditingId] = useState(0);
 
-  // A course sends {"teacher": 3}, not the teacher's name. There is no way to
-  // ask the API to expand it, so the teacher list is fetched as well and the
-  // two are joined here in JavaScript.
-  function findTeacherName(teacherId) {
-    const teacher = teachers.find((item) => item.id === teacherId);
-    if (teacher) {
-      return teacher.name;
-    }
-    return "Unknown";
-  }
-
-  // Bumping this re-runs the effect below. Saving and deleting call reload()
-  // so the table shows what the server now holds.
+  // Bumping this re-runs both effects below. Saving and deleting call
+  // reload() so the table shows what the server now holds.
   const [reloadCount, setReloadCount] = useState(0);
 
   function reload() {
     setReloadCount((count) => count + 1);
   }
 
+  // One page of courses, re-read whenever the search box, the sort or the
+  // page number changes.
   useEffect(() => {
+    let isCurrent = true;
+
     async function load() {
+      setIsLoading(true);
+
       try {
-        const [courseRows, teacherRows] = await Promise.all([
-          coursesApi.list(),
-          teachersApi.list(),
-        ]);
-        setCourses(courseRows);
-        setTeachers(teacherRows);
+        const body = await coursesApi.list(queryParams);
+        if (!isCurrent) {
+          return;
+        }
+        setCourses(body.results);
+        setCount(body.count);
+        setTotalPages(body.total_pages);
         setError("");
       } catch (problem) {
+        if (!isCurrent) {
+          return;
+        }
+        if (stepBackAfter(problem)) {
+          return;
+        }
         setError(problem.message);
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
 
     load();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [reloadCount, queryParams, stepBackAfter]);
+
+  // The teacher list is only wanted for the two dropdowns — the one in the
+  // form and the one in the filter bar. The name against each row comes off
+  // the row itself as `teacher_name`, so no join is done here. Its own effect,
+  // so that turning a page does not re-read it.
+  useEffect(() => {
+    async function loadTeachers() {
+      try {
+        setTeachers(await teachersApi.listAll({ ordering: "name" }));
+      } catch (problem) {
+        setError(problem.message);
+      }
+    }
+
+    loadTeachers();
   }, [reloadCount]);
 
   function openEmptyForm() {
@@ -221,7 +254,9 @@ export default function Courses() {
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="text-sm font-semibold text-slate-800">
-            {isLoading ? "Loading..." : `${courses.length} courses`}
+            {isLoading
+              ? "Loading..."
+              : `${count} ${count === 1 ? "course" : "courses"}`}
           </h2>
           {mayCreate && (
             <Button onClick={openEmptyForm}>
@@ -231,7 +266,45 @@ export default function Courses() {
           )}
         </div>
 
-        <Table columns={["ID", "Title", "Description", "Teacher", "Action"]}>
+        <FilterBar
+          search={query.searchBox}
+          onSearchChange={query.setSearchBox}
+          placeholder="Title, description or teacher"
+          isFiltered={query.isFiltered}
+          onClear={query.clear}
+        >
+          <Select
+            label="Teacher"
+            className="min-w-48"
+            value={query.filters.teacher ?? ""}
+            onChange={(event) => query.setFilter("teacher", event.target.value)}
+          >
+            <option value="">Any teacher</option>
+            {teachers.map((teacher) => (
+              <option key={teacher.id} value={teacher.id}>
+                {teacher.name}
+              </option>
+            ))}
+          </Select>
+        </FilterBar>
+
+        <Table
+          columns={[
+            { label: "ID", field: "id" },
+            { label: "Title", field: "title" },
+            "Description",
+            { label: "Teacher", field: "teacher__name" },
+            "Action",
+          ]}
+          ordering={query.ordering}
+          onSort={query.toggleSort}
+          isEmpty={!isLoading && courses.length === 0}
+          emptyMessage={
+            query.isFiltered
+              ? "No course matches those filters."
+              : "No courses yet."
+          }
+        >
           {courses.map((course) => (
             <tr
               key={course.id}
@@ -245,7 +318,7 @@ export default function Courses() {
                 </span>
               </td>
               <td className="px-3 py-2 text-slate-700">
-                {findTeacherName(course.teacher)}
+                {course.teacher_name}
               </td>
               <td className="px-3 py-2">
                 <div className="flex gap-1">
@@ -274,6 +347,15 @@ export default function Courses() {
             </tr>
           ))}
         </Table>
+
+        <Pagination
+          page={query.page}
+          pageSize={query.pageSize}
+          count={count}
+          totalPages={totalPages}
+          onPageChange={query.setPage}
+          onPageSizeChange={query.setPageSize}
+        />
       </div>
 
       <ConfirmDialog

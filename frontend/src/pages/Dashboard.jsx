@@ -80,15 +80,17 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // There is no counts endpoint, so every list is fetched and measured.
+  // There is still no counts endpoint, but a paginated list reports how many
+  // rows matched, so count() asks for one row and reads `count` off the
+  // envelope. Eight tiles used to mean downloading eight whole tables.
   useEffect(() => {
     async function load() {
       try {
-        const lists = await Promise.all(tiles.map((tile) => tile.api.list()));
+        const totals = await Promise.all(tiles.map((tile) => tile.api.count()));
 
         const nextCounts = {};
         tiles.forEach((tile, index) => {
-          nextCounts[tile.text] = lists[index].length;
+          nextCounts[tile.text] = totals[index];
         });
 
         setCounts(nextCounts);

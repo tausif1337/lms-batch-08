@@ -9,7 +9,7 @@ backend is not running, the pages say so instead of inventing rows.
 
 ## Start it
 
-The backend has to be up first — see [`../RUNNING.md`](../RUNNING.md). Then, in
+The backend has to be up first — see [`../README.md`](../README.md). Then, in
 this folder:
 
 ```bash
@@ -81,6 +81,8 @@ src/
   auth.js            the auth context and its useAuth() hook
   AuthContext.jsx    holds who is logged in, and logs them in and out
   permissions.js     which role may do what, for the buttons
+  useTableQuery.js   page, page size, search, sort and filter state for the
+                     eight table pages, in one hook instead of eight copies
   Sidebar.jsx        the menu, and the frame around every signed-in page
   index.css          one line, which turns Tailwind on
 
@@ -89,14 +91,16 @@ src/
     Button.jsx         primary, secondary and danger buttons
     Checkbox.jsx
     ConfirmDialog.jsx  replaces window.confirm() before a delete
+    FilterBar.jsx      the search box and dropdowns above a table
     IconButton.jsx     the pencil and bin buttons in a table row
     Input.jsx          a labelled box; passwords get a show/hide eye
     PageHeader.jsx     the title and subtitle at the top of a page
+    Pagination.jsx     the row count, page size and page buttons below a table
     ProtectedRoute.jsx sends you to /login without a token
     Select.jsx
-    Table.jsx          the header row; the pages supply the body
+    Table.jsx          the header row, sortable; the pages supply the body
     Textarea.jsx
-    index.js           one import line instead of eleven
+    index.js           one import line instead of thirteen
 
   pages/             one file per screen
     Login.jsx           phone and password
@@ -131,12 +135,19 @@ Each list page is built the same way:
 
 ```
 1. state for the rows, the form and the messages
-2. useEffect()    reads the list when the page opens
-3. reload()       re-runs that after a save or a delete
-4. handleSave()   creates a new row, or updates the one being edited
-5. askToDelete() / confirmDelete()   opens the dialog, then deletes
-6. the JSX: banners, form, table, confirm dialog
+2. useTableQuery()  the page, search, sort and filters, and query.params
+3. useEffect()      reads one page of rows whenever query.params changes
+4. reload()         re-runs that after a save or a delete
+5. handleSave()     creates a new row, or updates the one being edited
+6. askToDelete() / confirmDelete()   opens the dialog, then deletes
+7. the JSX: banners, form, FilterBar, Table, Pagination, confirm dialog
 ```
+
+The list endpoints are paginated, so a list call answers with
+`{count, page, page_size, total_pages, next, previous, results}` rather than a
+bare array. `list()` in `api.js` hands that envelope back untouched and the page
+reads `.results`; `listAll()` is the one that walks every page, which is what the
+dropdowns and the id-to-name lookups use.
 
 ## What the buttons do
 
@@ -147,6 +158,9 @@ Each list page is built the same way:
 | **Save** | POSTs or PUTs to the backend, then reloads the table |
 | **Cancel** / **X** | Closes the form without saving |
 | **Bin** | Asks first, then DELETEs the row |
+| **A column header** | Sorts by it; clicking again turns the sort around |
+| **Page buttons** | Asks the server for that page — the rest is never downloaded |
+| **Clear** | Drops the search and every filter, back to the plain list |
 | **Log in** | Checks the phone and password, and stores the token |
 | **Log out** | Discards the token and returns to the login page |
 
