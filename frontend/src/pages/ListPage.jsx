@@ -1,9 +1,41 @@
-import { useEffect, useMemo, useState } from "react";
-import { Eye, Inbox, Loader2, Pencil, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Check,
+  Eye,
+  Inbox,
+  Minus,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  SearchX,
+  Trash2,
+  X,
+} from "lucide-react";
 import Layout from "../components/Layout.jsx";
-import { ErrorMessage } from "../components/Message.jsx";
+import { ErrorMessage, InfoMessage } from "../components/Message.jsx";
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardFooter,
+  CardHeader,
+  CheckboxField,
+  ConfirmDialog,
+  EmptyState,
+  Field,
+  PageHeader,
+  SelectInput,
+  Skeleton,
+  TextArea,
+  TextInput,
+} from "../components/ui/index.js";
 import { addToList, deleteFromList, getList, updateInList } from "../api.js";
 import { getLoggedInUser } from "../auth.js";
+import { recordsFrom } from "../lib/records.js";
+import { cn } from "../lib/cn.js";
 
 const LINKED_LIST_FOR_EACH_FIELD = {
   teacher: { listName: "teachers", describe: record => record.name || `Teacher #${record.id}` },
@@ -70,6 +102,7 @@ const PAGE_SETTINGS = {
     rolesThatCanAdd: ["admin", "teacher", "student"],
     rolesThatCanEditAndDelete: ["admin", "teacher"],
     fieldsTheServerFillsInForRole: { student: ["student"] },
+    columnsHiddenForRole: { student: ["student"] },
   },
   results: {
     title: "Results",
@@ -102,6 +135,12 @@ function titleFor(fieldName) {
   return withSpaces.replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
+/** "a lesson" but "an assignment" — every record name here starts with a
+ *  letter, so first-letter vowel matching is enough. */
+function articleFor(word) {
+  return /^[aeiou]/i.test(word) ? "an" : "a";
+}
+
 function emptyForm(fieldNames) {
   const startingValues = {};
 
@@ -110,14 +149,6 @@ function emptyForm(fieldNames) {
   });
 
   return startingValues;
-}
-
-function recordsFrom(answer) {
-  if (Array.isArray(answer)) {
-    return answer;
-  }
-
-  return answer?.results || [];
 }
 
 async function waitWithoutThrowing(promise) {
@@ -180,13 +211,24 @@ async function loadChoicesForFields(fieldNames) {
   return choices;
 }
 
-function FormBox({ fieldName, value, choices, onChange }) {
-  const boxStyle =
-    "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+/** One labelled control, picked from the field name. */
+function FormField({ fieldName, value, choices, onChange }) {
+  const label = titleFor(fieldName);
+
+  if (fieldName === "is_active") {
+    return (
+      <CheckboxField
+        label={label}
+        hint="Account is active"
+        checked={Boolean(value)}
+        onChange={event => onChange(event.target.checked)}
+      />
+    );
+  }
 
   if (LINKED_LIST_FOR_EACH_FIELD[fieldName]) {
     const records = choices?.records || [];
-    const thingName = titleFor(fieldName).toLowerCase();
+    const thingName = label.toLowerCase();
 
     let firstOptionText = `Select ${thingName}`;
 
@@ -199,88 +241,71 @@ function FormBox({ fieldName, value, choices, onChange }) {
     }
 
     return (
-      <select
-        required
-        disabled={records.length === 0}
-        value={value ?? ""}
-        onChange={event => onChange(event.target.value)}
-        className={`${boxStyle} disabled:bg-slate-50 disabled:text-slate-500`}
-      >
-        <option value="">{firstOptionText}</option>
-        {records.map(record => (
-          <option key={record.id} value={record.id}>
-            {LINKED_LIST_FOR_EACH_FIELD[fieldName].describe(record)}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  if (fieldName === "is_active") {
-    return (
-      <input
-        type="checkbox"
-        checked={Boolean(value)}
-        onChange={event => onChange(event.target.checked)}
-        className="mt-3 h-4 w-4"
-      />
+      <Field label={label} required>
+        {fieldProps => (
+          <SelectInput
+            {...fieldProps}
+            required
+            disabled={records.length === 0}
+            value={value ?? ""}
+            onChange={event => onChange(event.target.value)}
+          >
+            <option value="">{firstOptionText}</option>
+            {records.map(record => (
+              <option key={record.id} value={record.id}>
+                {LINKED_LIST_FOR_EACH_FIELD[fieldName].describe(record)}
+              </option>
+            ))}
+          </SelectInput>
+        )}
+      </Field>
     );
   }
 
   if (LONG_TEXT_FIELDS.includes(fieldName)) {
     return (
-      <textarea
-        required
-        rows="3"
-        value={value}
-        onChange={event => onChange(event.target.value)}
-        className={boxStyle}
-      />
+      <Field label={label} required className="sm:col-span-2 lg:col-span-3">
+        {fieldProps => (
+          <TextArea
+            {...fieldProps}
+            required
+            rows="3"
+            value={value}
+            onChange={event => onChange(event.target.value)}
+          />
+        )}
+      </Field>
     );
   }
+
+  const extraProps = {};
 
   if (fieldName === "score") {
-    return (
-      <input
-        required
-        type="number"
-        step="any"
-        min="0"
-        value={value}
-        onChange={event => onChange(event.target.value)}
-        className={boxStyle}
-      />
-    );
-  }
-
-  if (fieldName === "due_date") {
-    return (
-      <input
-        required
-        type="datetime-local"
-        value={value}
-        onChange={event => onChange(event.target.value)}
-        className={boxStyle}
-      />
-    );
-  }
-
-  let boxType = "text";
-
-  if (fieldName.includes("date")) {
-    boxType = "date";
+    Object.assign(extraProps, { type: "number", step: "any", min: "0" });
+  } else if (fieldName === "due_date") {
+    extraProps.type = "datetime-local";
+  } else if (fieldName.includes("date")) {
+    extraProps.type = "date";
   } else if (fieldName === "email") {
-    boxType = "email";
+    extraProps.type = "email";
+  } else {
+    extraProps.type = "text";
   }
+
+  const isRequired = fieldName !== "roll_number";
 
   return (
-    <input
-      required={fieldName !== "roll_number"}
-      type={boxType}
-      value={value}
-      onChange={event => onChange(event.target.value)}
-      className={boxStyle}
-    />
+    <Field label={label} required={isRequired}>
+      {fieldProps => (
+        <TextInput
+          {...fieldProps}
+          {...extraProps}
+          required={isRequired}
+          value={value}
+          onChange={event => onChange(event.target.value)}
+        />
+      )}
+    </Field>
   );
 }
 
@@ -292,166 +317,207 @@ function RecordForm({
   isEditing,
   isSaving,
   onChangeOneBox,
-  onCancelEditing,
+  onClose,
   onSubmit,
 }) {
   return (
-    <form onSubmit={onSubmit} className="mb-6 rounded-2xl border bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-semibold">
-          {isEditing ? `Edit ${oneRecordIsCalled}` : `Add ${oneRecordIsCalled}`}
-        </h3>
+    <form onSubmit={onSubmit} className="mb-6">
+      <Card>
+        <CardHeader
+          Icon={isEditing ? Pencil : Plus}
+          title={isEditing ? `Edit ${oneRecordIsCalled}` : `New ${oneRecordIsCalled}`}
+          description={
+            isEditing
+              ? "Change the fields you need, then save."
+              : `Fill in the details to add ${articleFor(oneRecordIsCalled)} ${oneRecordIsCalled.toLowerCase()}.`
+          }
+          action={
+            <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+              <X aria-hidden="true" className="h-4 w-4" />
+            </Button>
+          }
+        />
 
-        {isEditing && (
-          <button
-            type="button"
-            onClick={onCancelEditing}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
-          >
-            <X className="h-4 w-4" />
+        <CardBody>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {fieldNames.map(fieldName => (
+              <FormField
+                key={fieldName}
+                fieldName={fieldName}
+                value={form[fieldName]}
+                choices={choicesForEachField[fieldName]}
+                onChange={newValue => onChangeOneBox(fieldName, newValue)}
+              />
+            ))}
+          </div>
+        </CardBody>
+
+        <CardFooter className="justify-end">
+          <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-        )}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {fieldNames.map(fieldName => (
-          <label key={fieldName} className="text-sm font-medium text-slate-700">
-            {titleFor(fieldName)}
-            <FormBox
-              fieldName={fieldName}
-              value={form[fieldName]}
-              choices={choicesForEachField[fieldName]}
-              onChange={newValue => onChangeOneBox(fieldName, newValue)}
-            />
-          </label>
-        ))}
-      </div>
-
-      <button
-        disabled={isSaving}
-        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-      >
-        {isSaving && (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Saving...
-          </>
-        )}
-        {!isSaving && isEditing && (
-          <>
-            <Save className="h-4 w-4" />
-            Save changes
-          </>
-        )}
-        {!isSaving && !isEditing && (
-          <>
-            <Plus className="h-4 w-4" />
-            Create
-          </>
-        )}
-      </button>
+          </Button>
+          <Button
+            type="submit"
+            Icon={isEditing ? Save : Plus}
+            isLoading={isSaving}
+            loadingLabel="Saving..."
+          >
+            {isEditing ? "Save changes" : `Create ${oneRecordIsCalled.toLowerCase()}`}
+          </Button>
+        </CardFooter>
+      </Card>
     </form>
   );
 }
 
-function WholeWidthRow({ columnCount, children }) {
+function BooleanCell({ value }) {
   return (
-    <tr>
-      <td colSpan={columnCount} className="px-4 py-10 text-center text-slate-500">
-        {children}
-      </td>
-    </tr>
+    <Badge tone={value ? "success" : "neutral"}>
+      {value ? (
+        <Check aria-hidden="true" className="h-3 w-3" />
+      ) : (
+        <Minus aria-hidden="true" className="h-3 w-3" />
+      )}
+      {value ? "Yes" : "No"}
+    </Badge>
   );
 }
 
-function RecordsTable({
-  columnNames,
-  records,
-  isLoading,
-  canEditAndDelete,
-  textForCell,
-  onEdit,
-  onDelete,
-}) {
-  const columnCount = columnNames.length + (canEditAndDelete ? 1 : 0);
-
+function RowActions({ record, onEdit, onDelete, className = "" }) {
   return (
-    <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              {columnNames.map(columnName => (
-                <th key={columnName} className="px-4 py-3">
-                  {titleFor(columnName)}
-                </th>
-              ))}
-              {canEditAndDelete && <th className="px-4 py-3">Actions</th>}
-            </tr>
-          </thead>
-
-          <tbody className="divide-y">
-            {isLoading && (
-              <WholeWidthRow columnCount={columnCount}>
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading...
-                </span>
-              </WholeWidthRow>
-            )}
-
-            {!isLoading && records.length === 0 && (
-              <WholeWidthRow columnCount={columnCount}>
-                <span className="inline-flex flex-col items-center gap-2">
-                  <Inbox className="h-6 w-6 text-slate-400" />
-                  No records found.
-                </span>
-              </WholeWidthRow>
-            )}
-
-            {!isLoading &&
-              records.map(record => (
-                <tr key={record.id} className="hover:bg-slate-50">
-                  {columnNames.map(columnName => (
-                    <td key={columnName} className="max-w-xs px-4 py-3 align-top">
-                      {textForCell(columnName, record[columnName])}
-                    </td>
-                  ))}
-
-                  {canEditAndDelete && (
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <button
-                        onClick={() => onEdit(record)}
-                        className="mr-3 inline-flex items-center gap-1.5 font-medium text-indigo-600 hover:text-indigo-800"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => onDelete(record.id)}
-                        className="inline-flex items-center gap-1.5 font-medium text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
+    <div className={cn("flex items-center gap-1", className)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        Icon={Pencil}
+        onClick={() => onEdit(record)}
+        className="text-content-muted hover:text-primary"
+      >
+        Edit
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        Icon={Trash2}
+        onClick={() => onDelete(record)}
+        className="text-content-muted hover:bg-danger-soft hover:text-danger"
+      >
+        Delete
+      </Button>
     </div>
   );
 }
 
-function Notice({ children }) {
+function LoadingRows({ columnCount }) {
+  return Array.from({ length: 4 }).map((_, rowIndex) => (
+    <tr key={rowIndex}>
+      {Array.from({ length: columnCount }).map((__, cellIndex) => (
+        <td key={cellIndex} className="px-4 py-3.5">
+          <Skeleton className="h-4 w-24" />
+        </td>
+      ))}
+    </tr>
+  ));
+}
+
+/** Desktop table. Below `sm` the card list below is shown instead, so nothing
+ *  has to be scrolled sideways on a phone. */
+function RecordsTable({ columnNames, records, canEditAndDelete, renderCell, onEdit, onDelete }) {
   return (
-    <p className="mb-4 flex items-center gap-2 rounded-lg bg-slate-100 p-3 text-sm text-slate-600">
-      <Eye className="h-4 w-4 shrink-0" />
-      {children}
-    </p>
+    <div className="hidden overflow-x-auto sm:block">
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="border-b border-line bg-surface-muted">
+            {columnNames.map(columnName => (
+              <th
+                key={columnName}
+                scope="col"
+                className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wider text-content-subtle"
+              >
+                {titleFor(columnName)}
+              </th>
+            ))}
+            {canEditAndDelete && (
+              <th scope="col" className="px-4 py-3 text-right">
+                <span className="sr-only">Actions</span>
+              </th>
+            )}
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-line">
+          {records.map(record => (
+            <tr key={record.id} className="transition-colors hover:bg-surface-muted/60">
+              {columnNames.map(columnName => (
+                <td
+                  key={columnName}
+                  className="max-w-[22rem] px-4 py-3.5 align-top text-content-muted"
+                >
+                  {renderCell(columnName, record[columnName], record)}
+                </td>
+              ))}
+
+              {canEditAndDelete && (
+                <td className="whitespace-nowrap px-2 py-2 text-right align-top">
+                  <RowActions
+                    record={record}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    className="justify-end"
+                  />
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Columns worth using as a card headline, best first. Falling back to
+ *  columnNames[0] would title the Students cards with "account", which is
+ *  blank for any student not linked to a login. */
+const HEADLINE_COLUMNS = ["name", "title"];
+
+function headlineColumnOf(columnNames) {
+  return HEADLINE_COLUMNS.find(column => columnNames.includes(column)) || columnNames[0];
+}
+
+function RecordCards({ columnNames, records, canEditAndDelete, renderCell, onEdit, onDelete }) {
+  const headlineColumn = headlineColumnOf(columnNames);
+  const otherColumns = columnNames.filter(column => column !== headlineColumn);
+
+  return (
+    <ul className="divide-y divide-line sm:hidden">
+      {records.map(record => (
+        <li key={record.id} className="p-4">
+          <p className="font-semibold text-content">
+            {renderCell(headlineColumn, record[headlineColumn], record)}
+          </p>
+
+          <dl className="mt-3 space-y-1.5">
+            {otherColumns.map(columnName => (
+              <div key={columnName} className="flex gap-3 text-sm">
+                <dt className="w-28 shrink-0 text-content-subtle">{titleFor(columnName)}</dt>
+                <dd className="min-w-0 flex-1 break-words text-content-muted">
+                  {renderCell(columnName, record[columnName], record)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          {canEditAndDelete && (
+            <RowActions
+              record={record}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              className="mt-3 -ml-2"
+            />
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -463,7 +529,12 @@ export default function ListPage({ listName }) {
   const canAdd = page.rolesThatCanAdd.includes(role);
   const canEditAndDelete = page.rolesThatCanEditAndDelete.includes(role);
 
-  const columnNames = useMemo(() => page.tableColumns || page.formFields, [page]);
+  const columnNames = useMemo(() => {
+    const everyColumn = page.tableColumns || page.formFields;
+    const hiddenForThisRole = page.columnsHiddenForRole?.[role] || [];
+
+    return everyColumn.filter(columnName => !hiddenForThisRole.includes(columnName));
+  }, [page, role]);
 
   const fieldsShownInForm = useMemo(() => {
     const filledByServer = page.fieldsTheServerFillsInForRole?.[role] || [];
@@ -481,8 +552,12 @@ export default function ListPage({ listName }) {
   const [choicesForEachField, setChoicesForEachField] = useState({});
   const [form, setForm] = useState(() => emptyForm(fieldsShownInForm));
   const [recordBeingEdited, setRecordBeingEdited] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState(null);
+  const [searchText, setSearchText] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
@@ -542,9 +617,16 @@ export default function ListPage({ listName }) {
     setForm(oldForm => ({ ...oldForm, [fieldName]: newValue }));
   }
 
-  function emptyTheForm() {
+  function closeAndEmptyTheForm() {
+    setRecordBeingEdited(null);
+    setIsFormOpen(false);
+    setForm(emptyForm(fieldsShownInForm));
+  }
+
+  function openBlankForm() {
     setRecordBeingEdited(null);
     setForm(emptyForm(fieldsShownInForm));
+    setIsFormOpen(true);
   }
 
   async function handleSubmit(event) {
@@ -566,7 +648,7 @@ export default function ListPage({ listName }) {
         await addToList(listName, recordToSend);
       }
 
-      emptyTheForm();
+      closeAndEmptyTheForm();
       await reloadRecords(true);
     } catch (failure) {
       setErrorMessage(failure.message);
@@ -575,20 +657,19 @@ export default function ListPage({ listName }) {
     }
   }
 
-  async function handleDelete(recordId) {
-    const personSaidYes = window.confirm("Delete this record?");
-
-    if (!personSaidYes) {
-      return;
-    }
-
+  async function handleConfirmDelete() {
+    setIsDeleting(true);
     setErrorMessage("");
 
     try {
-      await deleteFromList(listName, recordId);
+      await deleteFromList(listName, recordToDelete.id);
+      setRecordToDelete(null);
       await reloadRecords();
     } catch (failure) {
       setErrorMessage(failure.message);
+      setRecordToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -606,70 +687,128 @@ export default function ListPage({ listName }) {
     });
 
     setForm(formValues);
+    setIsFormOpen(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function textForCell(fieldName, value) {
-    if (LINKED_LIST_FOR_EACH_FIELD[fieldName]) {
-      const choiceRecords = choicesForEachField[fieldName]?.records || [];
-      const matching = choiceRecords.find(choice => String(choice.id) === String(value));
+  const textForCell = useCallback(
+    (fieldName, value, record) => {
+      if (LINKED_LIST_FOR_EACH_FIELD[fieldName]) {
+        const choiceRecords = choicesForEachField[fieldName]?.records || [];
+        const matching = choiceRecords.find(choice => String(choice.id) === String(value));
 
-      if (matching) {
-        return LINKED_LIST_FOR_EACH_FIELD[fieldName].describe(matching);
+        if (matching) {
+          return LINKED_LIST_FOR_EACH_FIELD[fieldName].describe(matching);
+        }
+
+        if (value === null || value === undefined || value === "") {
+          return "";
+        }
+
+        // Some lists are staff-only, so a student cannot fetch the names to
+        // look this id up in. The server sends the name on the row itself for
+        // exactly that case; a bare id is the last resort.
+        const nameSentWithTheRecord = record?.[`${fieldName}_name`];
+
+        return nameSentWithTheRecord || `#${value}`;
       }
 
-      if (value === null || value === undefined || value === "") {
-        return "";
+      if (typeof value === "boolean") {
+        return value ? "Yes" : "No";
       }
 
-      return `#${value}`;
-    }
+      if (DATE_AND_TIME_FIELDS.includes(fieldName)) {
+        return value ? new Date(value).toLocaleString() : "";
+      }
 
+      if (typeof value === "object" && value !== null) {
+        return JSON.stringify(value);
+      }
+
+      return String(value ?? "");
+    },
+    [choicesForEachField],
+  );
+
+  /** Same value as textForCell, but booleans come back as a badge. Search runs
+   *  on textForCell so it still matches "yes"/"no". */
+  function renderCell(fieldName, value, record) {
     if (typeof value === "boolean") {
-      return value ? "Yes" : "No";
+      return <BooleanCell value={value} />;
     }
 
-    if (DATE_AND_TIME_FIELDS.includes(fieldName)) {
-      return value ? new Date(value).toLocaleString() : "";
-    }
+    const text = textForCell(fieldName, value, record);
 
-    if (typeof value === "object" && value !== null) {
-      return JSON.stringify(value);
-    }
-
-    return String(value ?? "");
+    return text === "" ? <span className="text-content-subtle">—</span> : text;
   }
+
+  const matchingRecords = useMemo(() => {
+    const needle = searchText.trim().toLowerCase();
+
+    if (!needle) {
+      return records;
+    }
+
+    return records.filter(record =>
+      columnNames.some(columnName =>
+        textForCell(columnName, record[columnName], record).toLowerCase().includes(needle),
+      ),
+    );
+  }, [records, columnNames, searchText, textForCell]);
+
+  const columnCount = columnNames.length + (canEditAndDelete ? 1 : 0);
+  const isSearching = searchText.trim().length > 0;
 
   return (
     <Layout title={page.title}>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-sm text-slate-500">LMS management</p>
-          <h2 className="text-2xl font-bold">{page.title}</h2>
-        </div>
+      <PageHeader
+        eyebrow="LMS management"
+        title={page.title}
+        description={
+          isLoading
+            ? "Loading records..."
+            : `${records.length} ${records.length === 1 ? "record" : "records"}${
+                isSearching ? ` · ${matchingRecords.length} matching` : ""
+              }`
+        }
+        action={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => reloadRecords(true)}
+              disabled={isLoading}
+              aria-label="Refresh list"
+            >
+              <RefreshCw
+                aria-hidden="true"
+                className={cn("h-4 w-4", isLoading && "animate-spin")}
+              />
+              Refresh
+            </Button>
 
-        <button
-          onClick={() => reloadRecords(true)}
-          disabled={isLoading}
-          className="inline-flex items-center gap-2 rounded-lg border bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
-      </div>
+            {canAdd && !isFormOpen && (
+              <Button Icon={Plus} onClick={openBlankForm}>
+                New {page.oneRecordIsCalled.toLowerCase()}
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {!canAdd && !canEditAndDelete && (
-        <Notice>You can read this list. Changing it is not something your role allows.</Notice>
+        <InfoMessage className="mb-4">
+          You can read this list. Changing it is not something your role allows.
+        </InfoMessage>
       )}
 
       {listName === "submissions" && role === "student" && (
-        <Notice>
-          This is your own work only. Handing in files it under your account; after that only a
-          teacher can change it.
-        </Notice>
+        <InfoMessage className="mb-4">
+          You only see your own work here. Anything you hand in is filed under your account, and
+          after that only a teacher can change it.
+        </InfoMessage>
       )}
 
-      {canAdd && (
+      {canAdd && isFormOpen && (
         <RecordForm
           oneRecordIsCalled={page.oneRecordIsCalled}
           fieldNames={fieldsShownInForm}
@@ -678,21 +817,96 @@ export default function ListPage({ listName }) {
           isEditing={Boolean(recordBeingEdited)}
           isSaving={isSaving}
           onChangeOneBox={changeOneBox}
-          onCancelEditing={emptyTheForm}
+          onClose={closeAndEmptyTheForm}
           onSubmit={handleSubmit}
         />
       )}
 
-      <ErrorMessage className="mb-4">{errorMessage}</ErrorMessage>
+      <ErrorMessage className="mb-4" onDismiss={() => setErrorMessage("")}>
+        {errorMessage}
+      </ErrorMessage>
 
-      <RecordsTable
-        columnNames={columnNames}
-        records={records}
-        isLoading={isLoading}
-        canEditAndDelete={canEditAndDelete}
-        textForCell={textForCell}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+      <Card className="overflow-hidden">
+        <div className="border-b border-line p-3">
+          <div className="relative max-w-xs">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-subtle"
+            />
+            <input
+              type="search"
+              value={searchText}
+              onChange={event => setSearchText(event.target.value)}
+              placeholder={`Search ${page.title.toLowerCase()}...`}
+              aria-label={`Search ${page.title.toLowerCase()}`}
+              className="h-9 w-full rounded-lg border border-line bg-surface pl-9 pr-3 text-sm text-content placeholder:text-content-subtle transition hover:border-line-strong focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20"
+            />
+          </div>
+        </div>
+
+        {isLoading && (
+          <table className="w-full text-left text-sm">
+            <tbody className="divide-y divide-line">
+              <LoadingRows columnCount={columnCount} />
+            </tbody>
+          </table>
+        )}
+
+        {!isLoading && matchingRecords.length === 0 && (
+          <EmptyState
+            Icon={isSearching ? SearchX : Inbox}
+            title={isSearching ? "No matches" : `No ${page.title.toLowerCase()} yet`}
+            description={
+              isSearching
+                ? `Nothing here matches "${searchText.trim()}".`
+                : canAdd
+                  ? `Records you add will show up here.`
+                  : "Nothing has been added to this list yet."
+            }
+            action={
+              isSearching ? (
+                <Button variant="secondary" Icon={X} onClick={() => setSearchText("")}>
+                  Clear search
+                </Button>
+              ) : canAdd && !isFormOpen ? (
+                <Button Icon={Plus} onClick={openBlankForm}>
+                  New {page.oneRecordIsCalled.toLowerCase()}
+                </Button>
+              ) : null
+            }
+          />
+        )}
+
+        {!isLoading && matchingRecords.length > 0 && (
+          <>
+            <RecordsTable
+              columnNames={columnNames}
+              records={matchingRecords}
+              canEditAndDelete={canEditAndDelete}
+              renderCell={renderCell}
+              onEdit={handleEdit}
+              onDelete={setRecordToDelete}
+            />
+            <RecordCards
+              columnNames={columnNames}
+              records={matchingRecords}
+              canEditAndDelete={canEditAndDelete}
+              renderCell={renderCell}
+              onEdit={handleEdit}
+              onDelete={setRecordToDelete}
+            />
+          </>
+        )}
+      </Card>
+
+      <ConfirmDialog
+        isOpen={Boolean(recordToDelete)}
+        title={`Delete this ${page.oneRecordIsCalled.toLowerCase()}?`}
+        description="This cannot be undone. Records that depend on it will block the delete."
+        confirmLabel="Delete"
+        isWorking={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setRecordToDelete(null)}
       />
     </Layout>
   );

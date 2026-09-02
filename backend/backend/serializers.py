@@ -85,6 +85,17 @@ class RegisterSerializer(serializers.ModelSerializer):
                 enrollment_date=timezone.localdate(),
             )
 
+        # Same reasoning for a teacher: without a Teacher record there is
+        # nothing tying them to the courses they own, so the ownership check
+        # has nothing to compare against and every teacher looks like every
+        # other one. The subject is left for an admin to fill in.
+        if role == Profile.TEACHER:
+            Teacher.objects.create(
+                user=user,
+                name=f"{first_name} {last_name}".strip() or user.username,
+                email=email,
+            )
+
         return user
 
     def to_representation(self, instance):
@@ -226,9 +237,16 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 
 class TeacherSerializer(serializers.ModelSerializer):
+    # Which login this record belongs to, so an admin can see at a glance
+    # which teachers can actually sign in and own courses.
+    account = serializers.SerializerMethodField()
+
     class Meta:
         model = Teacher
-        fields = ['id', 'name', 'email', 'subject', 'is_active']
+        fields = ['id', 'account', 'name', 'email', 'subject', 'is_active']
+
+    def get_account(self, obj):
+        return obj.user.username if obj.user else None
 class StudentSerializer(serializers.ModelSerializer):
     # Which login this record belongs to, so an admin can see at a glance
     # which students can actually sign in and hand work in.
@@ -242,9 +260,14 @@ class StudentSerializer(serializers.ModelSerializer):
         return obj.user.username if obj.user else None
 
 class CourseSerializer(serializers.ModelSerializer):
+    # Students may read courses but not the teacher register, so the name
+    # travels with the course rather than being looked up from a list they
+    # are not allowed to fetch.
+    teacher_name = serializers.CharField(source='teacher.name', read_only=True)
+
     class Meta:
         model = Course
-        fields = ['id', 'title', 'description', 'teacher']
+        fields = ['id', 'title', 'description', 'teacher', 'teacher_name']
 
 class EnrollmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -257,6 +280,16 @@ class EnrollmentSerializer(serializers.ModelSerializer):
                 message='That student is already enrolled on that course.',
             )
         ]
+
+    def validate_student(self, value):
+        # is_active is meant to mean something: a student who has been
+        # switched off does not get put on anything new.
+        if not value.is_active:
+            raise serializers.ValidationError(
+                'That student record has been deactivated, so it cannot be '
+                'enrolled on anything new.'
+            )
+        return value
 
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
@@ -288,9 +321,11 @@ class SubmissionSerializer(serializers.ModelSerializer):
         required=False,
     )
 
+    student_name = serializers.CharField(source='student.name', read_only=True)
+
     class Meta:
         model = Submission
-        fields = ['id', 'assignment', 'student', 'submitted_at', 'content']
+        fields = ['id', 'assignment', 'student', 'student_name', 'submitted_at', 'content']
 
     def validate(self, attrs):
         request = self.context.get('request')

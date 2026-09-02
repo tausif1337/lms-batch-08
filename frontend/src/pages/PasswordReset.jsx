@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, AtSign, LoaderCircle, Mail, Send } from "lucide-react";
+import { ArrowLeft, AtSign, Mail, Send } from "lucide-react";
 import AuthCard from "../components/AuthCard.jsx";
 import { ErrorMessage, SuccessMessage } from "../components/Message.jsx";
+import { Button, Field, TextInput } from "../components/ui/index.js";
 import { requestPasswordResetEmail } from "../api.js";
 
 export default function PasswordReset() {
@@ -32,49 +33,44 @@ export default function PasswordReset() {
       Icon={Mail}
       title="Forgot password"
       subtitle="Enter your email and we will send a reset link."
+      footer={
+        <Link
+          to="/login"
+          className="flex items-center justify-center gap-1.5 text-sm font-medium text-primary transition hover:text-primary-hover"
+        >
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          Back to login
+        </Link>
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <label className="block text-sm font-medium">
-          Email
-          <span className="relative mt-1 block">
-            <AtSign className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              required
+        <Field label="Email" required>
+          {fieldProps => (
+            <TextInput
+              {...fieldProps}
+              Icon={AtSign}
               type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
               value={email}
               onChange={event => setEmail(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-3 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             />
-          </span>
-        </label>
+          )}
+        </Field>
 
         <SuccessMessage>{successMessage}</SuccessMessage>
         <ErrorMessage>{errorMessage}</ErrorMessage>
 
-        <button
-          disabled={isSending}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          Icon={Send}
+          isLoading={isSending}
+          loadingLabel="Sending..."
         >
-          {isSending ? (
-            <>
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Sending...
-            </>
-          ) : (
-            <>
-              <Send className="h-4 w-4" />
-              Send reset link
-            </>
-          )}
-        </button>
-
-        <Link
-          to="/login"
-          className="flex items-center justify-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to login
-        </Link>
+          Send reset link
+        </Button>
       </form>
     </AuthCard>
   );

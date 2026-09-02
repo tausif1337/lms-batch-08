@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import render
 from django.contrib.auth.models import User
 from rest_framework.views import APIView
@@ -11,7 +13,17 @@ from django.contrib.auth.tokens import default_token_generator
 from .serializers import (AssignmentSerializer, ChangePasswordSerializer, CourseSerializer, EnrollmentSerializer, LessonSerializer, ProfileUpdateSerializer, RegisterSerializer, LoginSerializer, ResultSerializer, StudentSerializer, SubmissionSerializer, TeacherSerializer)
 
 from .models import (Assignment, Course, Enrollment, Lesson, Profile, Results, Student, Submission, Teacher)
-from .permissions import AdminWrites, IsAdmin, SubmissionWrites, TeachingStaffWrites, role_of
+from .permissions import (
+    AdminWrites,
+    EnrollmentWrites,
+    IsAdmin,
+    SubmissionWrites,
+    TeachingStaffWrites,
+    refuse_if_another_teachers_course,
+    refuse_if_course_given_to_another_teacher,
+    role_of,
+    student_record_of,
+)
 from .serializers import (
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
@@ -26,8 +38,17 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+logger = logging.getLogger(__name__)
+
 
 def blacklist_user_tokens(user):
+    """Retire every refresh token this account still holds.
+
+    Returns False when that could not be done. Swallowing the failure silently
+    meant a password change could report the session ended while the old
+    refresh tokens stayed live for their full week, so the caller is told and
+    the reason is logged.
+    """
     try:
         from rest_framework_simplejwt.token_blacklist.models import (
             OutstandingToken,
@@ -40,7 +61,10 @@ def blacklist_user_tokens(user):
             BlacklistedToken.objects.get_or_create(token=token)
 
     except Exception:
-        pass
+        logger.exception("Could not retire refresh tokens for user %s", user.pk)
+        return False
+
+    return True
 
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
@@ -90,11 +114,14 @@ class PasswordResetConfirmView(APIView):
         user.set_password(new_password)
         user.save()
 
-        blacklist_user_tokens(user)
+        retired = blacklist_user_tokens(user)
 
         return Response(
             {
                 "detail": "Password has been reset successfully. Please login again."
+                if retired
+                else "Password has been reset, but sessions opened earlier could "
+                     "not be signed out. Tell an admin."
             },
             status=status.HTTP_200_OK,
         )
@@ -146,6 +173,17 @@ class LoginView(APIView):
 
         if not user.check_password(password):
             return Response({'error': 'Invalid phone or password'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Django's own login refuses a disabled account; check_password on its
+        # own does not. Without this the account is handed tokens here and then
+        # turned away by every request that uses them, which looks like the
+        # login worked and the site is broken. Saying so is safe: you already
+        # had to know the password to get this far.
+        if not user.is_active:
+            return Response(
+                {'error': 'This account has been deactivated. Ask an admin.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         tokens = get_tokens_for_user(user)
         return Response({
@@ -250,10 +288,15 @@ class ChangePasswordView(APIView):
         # in the caller's hands cannot be revoked — JWTs are not looked up on
         # each request — so the frontend signs you out and makes you log in
         # again with the new password.
-        blacklist_user_tokens(user)
+        retired = blacklist_user_tokens(user)
 
         return Response(
-            {'detail': 'Password changed. Please log in again.'},
+            {
+                'detail': 'Password changed. Please log in again.'
+                if retired
+                else 'Password changed, but sessions opened earlier could not '
+                     'be signed out. Tell an admin.'
+            },
             status=status.HTTP_200_OK,
         )
     
@@ -277,29 +320,49 @@ class StudentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
     serializer_class = StudentSerializer
     permission_classes = [AdminWrites]
 
+
+class OwnCourseWritesOnly:
+    """A teacher creating something may only hang it off their own course.
+
+    The permission class already refuses a teacher who edits or deletes
+    another teacher's row, but a create has no row to check yet, so the course
+    has to be read out of what was submitted. Admins pass straight through.
+    """
+
+    def perform_create(self, serializer):
+        refuse_if_another_teachers_course(self.request, serializer.validated_data)
+        serializer.save()
+
+
 class CourseListCreateView(generics.ListCreateAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     permission_classes = [TeachingStaffWrites]
+
+    def perform_create(self, serializer):
+        # A new course names its teacher rather than sitting under one, so it
+        # gets its own check: a teacher may only create courses in their name.
+        refuse_if_course_given_to_another_teacher(self.request, serializer.validated_data)
+        serializer.save()
 
 class CourseRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     permission_classes = [TeachingStaffWrites]
 
-class EnrollmentListCreateView(generics.ListCreateAPIView):
+class EnrollmentListCreateView(OwnCourseWritesOnly, generics.ListCreateAPIView):
     """View to list and create enrollments."""
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
-    permission_classes = [TeachingStaffWrites]
+    permission_classes = [EnrollmentWrites]
 
 class EnrollmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """View to retrieve, update, or delete an enrollment."""
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
-    permission_classes = [TeachingStaffWrites]
+    permission_classes = [EnrollmentWrites]
 
-class LessonListCreateView(generics.ListCreateAPIView):
+class LessonListCreateView(OwnCourseWritesOnly, generics.ListCreateAPIView):
     """View to list and create lessons."""
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
@@ -311,7 +374,7 @@ class LessonRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = LessonSerializer
     permission_classes = [TeachingStaffWrites]
 
-class AssignmentListCreateView(generics.ListCreateAPIView):
+class AssignmentListCreateView(OwnCourseWritesOnly, generics.ListCreateAPIView):
     """View to list and create assignments."""
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
@@ -322,10 +385,6 @@ class AssignmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIVi
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
     permission_classes = [TeachingStaffWrites]
-
-def student_record_of(user):
-    """The Student row that belongs to this login, or None."""
-    return Student.objects.filter(user=user).first()
 
 
 class OwnWorkOnly:
@@ -362,6 +421,7 @@ class SubmissionListCreateView(OwnWorkOnly, generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         if role_of(self.request.user) != Profile.STUDENT:
+            refuse_if_another_teachers_course(self.request, serializer.validated_data)
             serializer.save()
             return
 
@@ -370,6 +430,23 @@ class SubmissionListCreateView(OwnWorkOnly, generics.ListCreateAPIView):
             raise ValidationError({
                 'student': 'Your account is not linked to a student record yet, '
                            'so there is nothing to hand this in under. Ask an admin.'
+            })
+
+        if not record.is_active:
+            raise ValidationError({
+                'student': 'This student record has been deactivated, so no more '
+                           'work can be handed in under it. Ask an admin.'
+            })
+
+        # Being signed in is not the same as being on the course. Without this
+        # a student could hand work in on any assignment in the school, simply
+        # by naming one they were never taught.
+        assignment = serializer.validated_data['assignment']
+
+        if not Enrollment.objects.filter(student=record, course=assignment.course).exists():
+            raise ValidationError({
+                'assignment': 'You are not enrolled on the course that assignment '
+                              'belongs to.'
             })
 
         # Set here, not taken from the request: this is the one place that
@@ -383,7 +460,7 @@ class SubmissionRetrieveUpdateDestroyAPIView(OwnWorkOnly, generics.RetrieveUpdat
     serializer_class = SubmissionSerializer
     permission_classes = [SubmissionWrites]
 
-class ResultsListCreateView(OwnWorkOnly, generics.ListCreateAPIView):
+class ResultsListCreateView(OwnWorkOnly, OwnCourseWritesOnly, generics.ListCreateAPIView):
     """View to list and create results."""
     queryset = Results.objects.all()
     serializer_class = ResultSerializer

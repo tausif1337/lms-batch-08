@@ -1,6 +1,278 @@
 @import "tailwindcss";
 
-:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #0f172a; background: #f8fafc; }
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; }
-button, input, textarea, select { font: inherit; }
+/* Tailwind v4 defaults dark: to prefers-color-scheme. We drive it from a class
+   on <html> instead so the user can override the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+   Palette
+   Fixed ramps. These never change between light and dark; the semantic tokens
+   below pick different rungs of them per theme.
+   Brand is teal rather than the stock indigo: brand-700 is the lightest rung
+   that still clears 4.5:1 against white, so it is the one buttons use.
+--------------------------------------------------------------------------- */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --color-brand-50: #ecfdfa;
+  --color-brand-100: #d0faf2;
+  --color-brand-200: #a5f3e6;
+  --color-brand-300: #6ee7d5;
+  --color-brand-400: #34d3bf;
+  --color-brand-500: #14b8a3;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+  --color-brand-950: #042f2c;
+
+  --color-accent-50: #fffbeb;
+  --color-accent-100: #fef3c7;
+  --color-accent-200: #fde68a;
+  --color-accent-300: #fcd34d;
+  --color-accent-400: #fbbf24;
+  --color-accent-500: #f59e0b;
+  --color-accent-600: #d97706;
+  --color-accent-700: #b45309;
+  --color-accent-800: #92400e;
+  --color-accent-900: #78350f;
+
+  --color-ink-50: #f6f8fa;
+  --color-ink-100: #eef2f6;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #080e1a;
+
+  /* Semantic tokens. Each is an alias for a runtime variable defined under
+     :root / .dark, so `bg-surface` flips theme without a single dark: variant
+     at the call site. */
+  --color-canvas: var(--ui-canvas);
+  --color-surface: var(--ui-surface);
+  --color-surface-muted: var(--ui-surface-muted);
+  --color-surface-raised: var(--ui-surface-raised);
+  --color-line: var(--ui-line);
+  --color-line-strong: var(--ui-line-strong);
+  --color-content: var(--ui-content);
+  --color-content-muted: var(--ui-content-muted);
+  --color-content-subtle: var(--ui-content-subtle);
+
+  --color-primary: var(--ui-primary);
+  --color-primary-hover: var(--ui-primary-hover);
+  --color-primary-active: var(--ui-primary-active);
+  --color-primary-fg: var(--ui-primary-fg);
+  --color-primary-soft: var(--ui-primary-soft);
+  --color-primary-on-soft: var(--ui-primary-on-soft);
+
+  --color-success: var(--ui-success);
+  --color-success-soft: var(--ui-success-soft);
+  --color-danger: var(--ui-danger);
+  --color-danger-hover: var(--ui-danger-hover);
+  --color-danger-soft: var(--ui-danger-soft);
+  --color-warning: var(--ui-warning);
+  --color-warning-soft: var(--ui-warning-soft);
+  --color-info: var(--ui-info);
+  --color-info-soft: var(--ui-info-soft);
+
+  --color-focus: var(--ui-focus);
+
+  /* Sidebar keeps its own scale: it stays dark in light mode, so it cannot
+     reuse the surface tokens. */
+  --color-rail: var(--ui-rail);
+  --color-rail-hover: var(--ui-rail-hover);
+  --color-rail-line: var(--ui-rail-line);
+  --color-rail-fg: var(--ui-rail-fg);
+  --color-rail-fg-muted: var(--ui-rail-fg-muted);
+
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --shadow-lift: 0 4px 6px -2px rgb(15 23 42 / 0.06), 0 12px 24px -6px rgb(15 23 42 / 0.10);
+  --shadow-pop: 0 10px 15px -3px rgb(15 23 42 / 0.10), 0 24px 48px -12px rgb(15 23 42 / 0.24);
+}
+
+:root {
+  color-scheme: light;
+
+  --ui-canvas: #f5f7f9;
+  --ui-surface: #ffffff;
+  --ui-surface-muted: #f1f5f9;
+  --ui-surface-raised: #ffffff;
+  --ui-line: #e4e9ef;
+  --ui-line-strong: #cbd5e1;
+  --ui-content: #0f172a;
+  --ui-content-muted: #55657a;
+  --ui-content-subtle: #7f8ea3;
+
+  --ui-primary: #0f766e;
+  --ui-primary-hover: #115e59;
+  --ui-primary-active: #134e4a;
+  --ui-primary-fg: #ffffff;
+  --ui-primary-soft: #d0faf2;
+  --ui-primary-on-soft: #115e59;
+
+  --ui-success: #047857;
+  --ui-success-soft: #d1fae5;
+  --ui-danger: #b91c1c;
+  --ui-danger-hover: #991b1b;
+  --ui-danger-soft: #fee2e2;
+  --ui-warning: #b45309;
+  --ui-warning-soft: #fef3c7;
+  --ui-info: #0369a1;
+  --ui-info-soft: #e0f2fe;
+
+  --ui-focus: #14b8a3;
+
+  --ui-rail: #0f1b24;
+  --ui-rail-hover: rgb(255 255 255 / 0.07);
+  --ui-rail-line: rgb(255 255 255 / 0.09);
+  --ui-rail-fg: #f1f5f9;
+  --ui-rail-fg-muted: #94a7b4;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --ui-canvas: #0a1119;
+  --ui-surface: #111c26;
+  --ui-surface-muted: #16232f;
+  --ui-surface-raised: #17242f;
+  --ui-line: #22323f;
+  --ui-line-strong: #2f4351;
+  --ui-content: #e8eef4;
+  --ui-content-muted: #9db0c0;
+  --ui-content-subtle: #71879a;
+
+  --ui-primary: #14b8a3;
+  --ui-primary-hover: #34d3bf;
+  --ui-primary-active: #6ee7d5;
+  --ui-primary-fg: #042f2c;
+  --ui-primary-soft: #0c3a36;
+  --ui-primary-on-soft: #6ee7d5;
+
+  --ui-success: #6ee7b7;
+  --ui-success-soft: #06342a;
+  --ui-danger: #fca5a5;
+  --ui-danger-hover: #fecaca;
+  --ui-danger-soft: #3d1618;
+  --ui-warning: #fcd34d;
+  --ui-warning-soft: #3a2a08;
+  --ui-info: #7dd3fc;
+  --ui-info-soft: #082f46;
+
+  --ui-focus: #34d3bf;
+
+  --ui-rail: #080e15;
+  --ui-rail-hover: rgb(255 255 255 / 0.06);
+  --ui-rail-line: rgb(255 255 255 / 0.07);
+  --ui-rail-fg: #e8eef4;
+  --ui-rail-fg-muted: #8698a8;
+}
+
+@layer base {
+  /* Tailwind v4 makes a bare `border` utility use currentColor. Everything in
+     this app wants the theme line colour instead. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-line);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background-color: var(--color-canvas);
+    color: var(--color-content);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Tailwind v4 preflight gives buttons `cursor: default`. Anything that acts
+     like a control should read as clickable instead. */
+  button,
+  summary,
+  select,
+  [role="button"],
+  [role="tab"],
+  [role="option"],
+  label[for] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* One focus treatment for the whole app. :focus-visible keeps it off mouse
+     clicks, so it never looks like a stuck highlight. */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-soft);
+    color: var(--color-primary-on-soft);
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  /* WebKit */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-line-strong);
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-content-subtle);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

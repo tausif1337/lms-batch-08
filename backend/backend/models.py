@@ -24,10 +24,26 @@ class Profile(models.Model):
     
 
 class Teacher(models.Model):
-    
+    # The login this teacher record belongs to. Without it nothing ties a
+    # teacher account to the courses it owns, so every teacher could rewrite
+    # every course and regrade every student.
+    #
+    # Nullable for the same reasons as Student.user: a record can outlive the
+    # account, and rows that predate this field may never have had one.
+    user = models.OneToOneField(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="teacher_record",
+    )
     name = models.CharField(max_length=100,blank=True, null=True)
     email=models.EmailField(blank=True, null=True)
-    subject = models.CharField(max_length=100)
+    # Blank because registering a teacher creates this row before anybody has
+    # said what they teach; an admin fills it in afterwards.
+    subject = models.CharField(max_length=100, blank=True)
+    # Switched off, this account keeps its login but loses every teacher
+    # power: it can still read, but not change course material or marks.
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -50,6 +66,8 @@ class Student(models.Model):
     name = models.CharField(max_length=100,blank=True, null=True)
     email=models.EmailField(blank=True, null=True)
     enrollment_date = models.DateField()
+    # Switched off, this student can no longer hand work in and cannot be
+    # enrolled on anything new. Their existing rows stay where they are.
     is_active = models.BooleanField(default=True)
     roll_number = models.CharField(max_length=100, blank=True, null=True)
 

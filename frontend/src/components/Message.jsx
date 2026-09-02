@@ -1,30 +1,52 @@
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
+import { cn } from "../lib/cn.js";
 
-const SHARED_STYLE = "flex items-start gap-2 rounded-lg px-4 py-3 text-sm";
-const ICON_STYLE = "mt-0.5 h-4 w-4 shrink-0";
+const TONES = {
+  error: { style: "bg-danger-soft text-danger", Icon: AlertCircle, role: "alert" },
+  success: { style: "bg-success-soft text-success", Icon: CheckCircle2, role: "status" },
+  info: { style: "bg-info-soft text-info", Icon: Info, role: "status" },
+};
 
-export function ErrorMessage({ children, className = "" }) {
+function Message({ tone, children, className = "", onDismiss }) {
   if (!children) {
     return null;
   }
 
+  const { style, Icon, role } = TONES[tone];
+
   return (
-    <p className={`${SHARED_STYLE} bg-red-50 text-red-700 ${className}`}>
-      <AlertCircle className={ICON_STYLE} />
-      {children}
-    </p>
+    <div
+      role={role}
+      className={cn(
+        "flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm ring-1 ring-inset ring-current/15",
+        style,
+        className,
+      )}
+    >
+      <Icon aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+      <span className="min-w-0 flex-1">{children}</span>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+          className="-mr-1 -mt-0.5 rounded p-1 opacity-70 transition hover:opacity-100"
+        >
+          <X aria-hidden="true" className="h-4 w-4" />
+        </button>
+      )}
+    </div>
   );
 }
 
-export function SuccessMessage({ children, className = "" }) {
-  if (!children) {
-    return null;
-  }
+export function ErrorMessage(props) {
+  return <Message tone="error" {...props} />;
+}
 
-  return (
-    <p className={`${SHARED_STYLE} bg-emerald-50 text-emerald-700 ${className}`}>
-      <CheckCircle2 className={ICON_STYLE} />
-      {children}
-    </p>
-  );
+export function SuccessMessage(props) {
+  return <Message tone="success" {...props} />;
+}
+
+export function InfoMessage(props) {
+  return <Message tone="info" {...props} />;
 }

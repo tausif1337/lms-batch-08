@@ -1,33 +1,10 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { KeyRound, LoaderCircle, Lock, LogIn } from "lucide-react";
+import { KeyRound, Lock, LogIn } from "lucide-react";
 import AuthCard from "../components/AuthCard.jsx";
 import { ErrorMessage, SuccessMessage } from "../components/Message.jsx";
+import { Button, Field, PasswordInput } from "../components/ui/index.js";
 import { setNewPasswordFromEmailLink } from "../api.js";
-
-const INPUT_STYLE =
-  "w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-3 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
-const ICON_INSIDE_INPUT_STYLE =
-  "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400";
-
-function PasswordBox({ label, value, onChange }) {
-  return (
-    <label className="block text-sm font-medium">
-      {label}
-      <span className="relative mt-1 block">
-        <Lock className={ICON_INSIDE_INPUT_STYLE} />
-        <input
-          required
-          minLength="8"
-          type="password"
-          value={value}
-          onChange={event => onChange(event.target.value)}
-          className={INPUT_STYLE}
-        />
-      </span>
-    </label>
-  );
-}
 
 export default function ResetPassword() {
   const [addressBarValues] = useSearchParams();
@@ -66,17 +43,15 @@ export default function ResetPassword() {
     return (
       <AuthCard
         Icon={KeyRound}
-        title="Set a new password"
-        subtitle="Choose a new password for your account."
+        title="Password updated"
+        subtitle="Your new password is ready to use."
       >
-        <div className="space-y-4">
+        <div className="space-y-5">
           <SuccessMessage>{successMessage}</SuccessMessage>
-          <Link
-            to="/login"
-            className="flex items-center justify-center gap-1.5 font-medium text-indigo-600 hover:text-indigo-800"
-          >
-            <LogIn className="h-4 w-4" />
-            Go to login
+          <Link to="/login">
+            <Button size="lg" className="w-full" Icon={LogIn}>
+              Go to login
+            </Button>
           </Link>
         </div>
       </AuthCard>
@@ -90,27 +65,49 @@ export default function ResetPassword() {
       subtitle="Choose a new password for your account."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <PasswordBox label="New password" value={newPassword} onChange={setNewPassword} />
-        <PasswordBox label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} />
-
-        <ErrorMessage>{errorMessage}</ErrorMessage>
-
-        <button
-          disabled={isSaving || linkIsIncomplete}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-        >
-          {isSaving ? (
-            <>
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Updating...
-            </>
-          ) : (
-            <>
-              <KeyRound className="h-4 w-4" />
-              Reset password
-            </>
+        <Field label="New password" hint="At least 8 characters." required>
+          {fieldProps => (
+            <PasswordInput
+              {...fieldProps}
+              Icon={Lock}
+              minLength="8"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={event => setNewPassword(event.target.value)}
+            />
           )}
-        </button>
+        </Field>
+
+        <Field label="Confirm password" required>
+          {fieldProps => (
+            <PasswordInput
+              {...fieldProps}
+              Icon={Lock}
+              minLength="8"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={event => setConfirmPassword(event.target.value)}
+            />
+          )}
+        </Field>
+
+        <ErrorMessage>
+          {linkIsIncomplete
+            ? "This reset link is missing information. Request a new one from the login page."
+            : errorMessage}
+        </ErrorMessage>
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          Icon={KeyRound}
+          disabled={linkIsIncomplete}
+          isLoading={isSaving}
+          loadingLabel="Updating..."
+        >
+          Reset password
+        </Button>
       </form>
     </AuthCard>
   );

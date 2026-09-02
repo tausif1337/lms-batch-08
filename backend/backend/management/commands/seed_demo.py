@@ -134,13 +134,21 @@ class Command(BaseCommand):
             record.save(update_fields=["name", "email", "is_active"])
 
         elif spec["role"] == Profile.TEACHER:
-            # Teacher has no link back to a User, so email is the only handle
-            # we have to avoid stacking up a new row on every run.
-            record, _ = Teacher.objects.get_or_create(
-                email=spec["email"],
-                defaults={"name": full_name, "subject": spec["subject"]},
+            # A teacher login without a Teacher row owns no courses, so it
+            # cannot create or change any. Matched on the account first, then
+            # on email, so a run against a database seeded before Teacher.user
+            # existed adopts the row already there instead of stacking up a
+            # second one beside it.
+            record = (
+                Teacher.objects.filter(user=user).first()
+                or Teacher.objects.filter(email=spec["email"]).first()
             )
+
+            if record is None:
+                record = Teacher(email=spec["email"])
+
+            record.user = user
             record.name = full_name
             record.subject = spec["subject"]
             record.is_active = True
-            record.save(update_fields=["name", "subject", "is_active"])
+            record.save()

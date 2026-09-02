@@ -1,24 +1,26 @@
 import { Link } from "react-router-dom";
 import { LayoutDashboard, SearchX } from "lucide-react";
+import { Button, ThemeToggle } from "../components/ui/index.js";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-100 p-4 text-center">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-canvas p-6 text-center">
+      <ThemeToggle className="absolute right-5 top-5" />
 
-      <div className="mb-5 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
-        <SearchX className="h-8 w-8" />
-      </div>
+      <span className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-soft text-primary-on-soft">
+        <SearchX aria-hidden="true" className="h-8 w-8" />
+      </span>
 
-      <h1 className="text-7xl font-bold text-indigo-600">404</h1>
+      <p className="text-6xl font-bold tracking-tight text-content sm:text-7xl">404</p>
+      <h1 className="mt-3 text-xl font-semibold text-content">Page not found</h1>
+      <p className="mt-2 max-w-sm text-sm text-content-muted">
+        The page you asked for does not exist, or your role does not have access to it.
+      </p>
 
-      <p className="mt-3 text-slate-600">Page not found.</p>
-
-      <Link
-        to="/"
-        className="mt-8 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700"
-      >
-        <LayoutDashboard className="h-4 w-4" />
-        Go to dashboard
+      <Link to="/" className="mt-8">
+        <Button size="lg" Icon={LayoutDashboard}>
+          Go to dashboard
+        </Button>
       </Link>
     </div>
   );
